@@ -1,0 +1,8 @@
+packages:
+  - .
+
+saveExact: true
+enablePrePostScripts: false
+minimumReleaseAge: 4320
+allowBuilds:
+  esbuild: true

@@ -39,10 +39,7 @@ check: lint validate ## run all local checks used before release
 
 .PHONY: dist-check
 dist-check: build ## verify dist/index.js is up to date after build
-	@if ! git diff --exit-code -- dist/index.js; then \
-		echo "::error::dist/index.js is out of date. Run 'make build' and commit the updated bundle."; \
-		exit 1; \
-	fi
+	@git diff --exit-code -- dist/index.js || (echo "::error::dist/index.js is out of date. Run 'make build' and commit the updated bundle." && exit 1)
 
 .PHONY: ci
 ci: install check dist-check ## run the release workflow checks locally
