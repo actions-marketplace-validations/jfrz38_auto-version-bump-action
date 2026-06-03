@@ -29,7 +29,7 @@
   "type": "commonjs",
   "packageManager": "pnpm@11.1.3",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13"
   },
   "scripts": {
     "build": "esbuild ./src/main.ts --bundle --platform=node --target=node20 --format=cjs --minify --outfile=dist/index.js",
