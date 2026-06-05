@@ -1,4 +1,5 @@
 import * as exec from '@actions/exec';
+import { GitStatus } from './git-status';
 
 export async function checkoutBumpBranch(baseBranch: string, branch: string): Promise<void> {
   await git(['fetch', 'origin', baseBranch, '--depth=1']);
@@ -36,7 +37,7 @@ export async function commitAndPush(branch: string, changedFiles: string[], comm
 
 export async function getChangedFiles(): Promise<string[]> {
   const status = await gitOutput(['status', '--porcelain', '--untracked-files=all', '-z']);
-  return parsePorcelainStatus(status);
+  return GitStatus.fromPorcelain(status).changedFiles;
 }
 
 async function git(args: string[]): Promise<void> {
@@ -46,25 +47,4 @@ async function git(args: string[]): Promise<void> {
 async function gitOutput(args: string[]): Promise<string> {
   const result = await exec.getExecOutput('git', args, { ignoreReturnCode: false });
   return result.stdout;
-}
-
-function parsePorcelainStatus(status: string): string[] {
-  const changedFiles: string[] = [];
-  const entries = status.split('\0').filter((entry) => entry.length > 0);
-
-  for (let index = 0; index < entries.length; index += 1) {
-    const entry = entries[index];
-    const statusCode = entry.slice(0, 2);
-    const filePath = entry.slice(3);
-    if (!filePath) {
-      continue;
-    }
-
-    changedFiles.push(filePath);
-    if (statusCode.includes('R') || statusCode.includes('C')) {
-      index += 1;
-    }
-  }
-
-  return changedFiles;
 }
