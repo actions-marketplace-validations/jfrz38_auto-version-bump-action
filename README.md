@@ -79,6 +79,7 @@ This creates or reuses a branch such as `chore/bump-version-1.2.4`, commits the 
 | `github-token` | No | `${{ github.token }}` | Token used for checks and PR creation. |
 | `overwrite-existing-branch` | No | `false` | Overwrite an existing bump branch when no open pull request is found for it. |
 | `commit-message` | No | `Bump version to {version}` | Commit message template. |
+| `pre-commit-commands` | No | | Commands to run after the version bump and before committing changes. One command per line. |
 | `pr-title` | No | `Bump version to {version}` | Pull request title template. |
 | `pr-body` | No | `Bumps version from {current-version} to {next-version} using a {bump} release bump.` | Pull request body template. |
 | `fail-if-tag-exists` | No | `true` | Fail if `${tag-prefix}${next-version}` already exists as a tag. |
@@ -91,6 +92,8 @@ Template inputs support:
 - `{bump}`
 
 If a bump branch already exists but there is no open pull request for it, the action fails by default so it does not overwrite remote work accidentally. Set `overwrite-existing-branch: true` to replace that generated bump branch using `git push --force-with-lease`.
+
+`pre-commit-commands` runs in the checked-out workspace after the version file is updated and before the action creates the bump commit. If any command exits with a non-zero status, the action fails before pushing the branch or opening the pull request. Any files changed, created, or deleted by those commands are included in the same bump commit.
 
 ## Outputs
 
@@ -194,6 +197,10 @@ jobs:
           base-branch: ${{ inputs.base_branch }}
           strategy: gradle-kts
           version-file: mockguard/build.gradle.kts
+          pre-commit-commands: |
+            pnpm install --frozen-lockfile
+            pnpm run build
+            make build-all-workspaces
 ```
 
 ## Regex

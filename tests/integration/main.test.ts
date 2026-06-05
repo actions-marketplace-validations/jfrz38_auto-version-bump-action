@@ -53,9 +53,15 @@ describe('main action entrypoint', () => {
       },
     });
     execMock.exec.mockResolvedValue(0);
+    let statusCalls = 0;
     execMock.getExecOutput.mockImplementation((_command: string, args: string[]) => {
       if (args[0] === 'status') {
-        return Promise.resolve({ stdout: ' M build.gradle.kts\n', stderr: '', exitCode: 0 });
+        statusCalls += 1;
+        if (statusCalls === 1) {
+          return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
+        }
+
+        return Promise.resolve({ stdout: ' M build.gradle.kts\0', stderr: '', exitCode: 0 });
       }
 
       return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
@@ -74,6 +80,7 @@ describe('main action entrypoint', () => {
         draft: 'true',
         'github-token': 'token',
         'commit-message': 'Bump version to {version}',
+        'pre-commit-commands': '',
         'pr-title': 'Bump version to {version}',
         'pr-body': 'Bumps version from {current-version} to {next-version} using a {bump} release bump.',
         'fail-if-tag-exists': 'true',

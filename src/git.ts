@@ -1,4 +1,5 @@
 import * as exec from '@actions/exec';
+import { GitStatus } from './git-status';
 
 export async function checkoutBumpBranch(baseBranch: string, branch: string): Promise<void> {
   await git(['fetch', 'origin', baseBranch, '--depth=1']);
@@ -32,6 +33,11 @@ export async function commitAndPush(branch: string, changedFiles: string[], comm
   }
 
   await git(['push', '--set-upstream', 'origin', branch]);
+}
+
+export async function getChangedFiles(): Promise<string[]> {
+  const status = await gitOutput(['status', '--porcelain', '--untracked-files=all', '-z']);
+  return GitStatus.fromPorcelain(status).changedFiles;
 }
 
 async function git(args: string[]): Promise<void> {
