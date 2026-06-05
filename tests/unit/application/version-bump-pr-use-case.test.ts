@@ -55,9 +55,15 @@ describe('VersionBumpPrUseCase', () => {
     };
     githubMock.getOctokit.mockReturnValue(octokit);
     execMock.exec.mockResolvedValue(0);
+    let statusCalls = 0;
     execMock.getExecOutput.mockImplementation((_command: string, args: string[]) => {
       if (args[0] === 'status') {
-        return Promise.resolve({ stdout: ' M build.gradle.kts\n', stderr: '', exitCode: 0 });
+        statusCalls += 1;
+        if (statusCalls === 1) {
+          return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
+        }
+
+        return Promise.resolve({ stdout: ' M build.gradle.kts\0', stderr: '', exitCode: 0 });
       }
 
       return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
@@ -96,9 +102,6 @@ describe('VersionBumpPrUseCase', () => {
 
   it('fails before changing files when the remote bump branch already exists without an open pull request', async () => {
     execMock.getExecOutput.mockImplementation((_command: string, args: string[]) => {
-      if (args[0] === 'status') {
-        return Promise.resolve({ stdout: ' M build.gradle.kts\n', stderr: '', exitCode: 0 });
-      }
       if (args[0] === 'ls-remote') {
         return Promise.resolve({
           stdout: 'abc1234567890abcdef\trefs/heads/chore/bump-version-1.2.4\n',
@@ -120,9 +123,15 @@ describe('VersionBumpPrUseCase', () => {
   });
 
   it('overwrites an existing remote bump branch with a lease when explicitly enabled', async () => {
+    let statusCalls = 0;
     execMock.getExecOutput.mockImplementation((_command: string, args: string[]) => {
       if (args[0] === 'status') {
-        return Promise.resolve({ stdout: ' M build.gradle.kts\n', stderr: '', exitCode: 0 });
+        statusCalls += 1;
+        if (statusCalls === 1) {
+          return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
+        }
+
+        return Promise.resolve({ stdout: ' M build.gradle.kts\0', stderr: '', exitCode: 0 });
       }
       if (args[0] === 'ls-remote') {
         return Promise.resolve({
@@ -167,6 +176,37 @@ describe('VersionBumpPrUseCase', () => {
     octokit.rest.repos.getReleaseByTag.mockResolvedValue({ data: { tag_name: 'v1.2.4' } });
 
     await expect(executeUseCase()).rejects.toThrow('GitHub Release v1.2.4 already exists');
+  });
+
+  it('runs pre-commit commands after bumping the version and commits generated files', async () => {
+    let statusCalls = 0;
+    execMock.getExecOutput.mockImplementation((_command: string, args: string[]) => {
+      if (args[0] === 'status') {
+        statusCalls += 1;
+        if (statusCalls === 1) {
+          return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
+        }
+
+        return Promise.resolve({ stdout: ' M build.gradle.kts\0 M dist/index.js\0', stderr: '', exitCode: 0 });
+      }
+
+      return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
+    });
+
+    const result = await executeUseCase({ preCommitCommands: 'make package-github-action' });
+
+    expect(result.changedFiles).toBe('build.gradle.kts\ndist/index.js');
+    expect(execMock.exec).toHaveBeenCalledWith('make package-github-action', [], { cwd: tempDir });
+    expect(execMock.exec).toHaveBeenCalledWith('git', ['add', 'build.gradle.kts', 'dist/index.js']);
+    expect(invocationIndex('make package-github-action')).toBeGreaterThan(invocationIndex('git', ['checkout', '-B', 'chore/bump-version-1.2.4', 'origin/develop']));
+    expect(invocationIndex('make package-github-action')).toBeLessThan(invocationIndex('git', ['add', 'build.gradle.kts', 'dist/index.js']));
+  });
+
+  it('runs multiline pre-commit commands in order', async () => {
+    await executeUseCase({ preCommitCommands: 'pnpm install\npnpm run build' });
+
+    expect(invocationIndex('pnpm install')).toBeLessThan(invocationIndex('pnpm run build'));
+    expect(invocationIndex('pnpm run build')).toBeLessThan(invocationIndex('git', ['add', 'build.gradle.kts']));
   });
 
   async function executeUseCase(inputOverrides: Partial<ActionInputs> = {}) {
@@ -214,6 +254,7 @@ function baseInputs(): ActionInputs {
     failIfTagExists: 'true',
     githubToken: 'token',
     overwriteExistingBranch: 'false',
+    preCommitCommands: '',
     prBody: 'Bumps version from {current-version} to {next-version} using a {bump} release bump.',
     prTitle: 'Bump version to {version}',
     strategy: 'gradle-kts',
@@ -222,4 +263,14 @@ function baseInputs(): ActionInputs {
     versionPattern: '',
     versionReplacement: '',
   };
+}
+
+function invocationIndex(command: string, args?: string[]): number {
+  return execMock.exec.mock.calls.findIndex((call) => {
+    if (call[0] !== command) {
+      return false;
+    }
+
+    return !args || JSON.stringify(call[1]) === JSON.stringify(args);
+  });
 }

@@ -1,6 +1,6 @@
 # Auto Version Bump Action
 
-[![CI](https://github.com/jfrz38/auto-version-bump-action/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jfrz38/auto-version-bump-action/actions/workflows/ci.yml)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/jfrz38/auto-version-bump-action/ci.yml)](https://github.com/jfrz38/auto-version-bump-action/actions/workflows/ci.yml)
 [![GitHub release](https://img.shields.io/github/v/release/jfrz38/auto-version-bump-action?display_name=tag)](https://github.com/jfrz38/auto-version-bump-action/releases)
 [![GitHub Marketplace](https://img.shields.io/badge/marketplace-check--version--change-blue?logo=githubactions)](https://github.com/marketplace/actions/auto-version-bump-action)
 [![License](https://img.shields.io/github/license/jfrz38/auto-version-bump-action)](LICENSE)
@@ -79,6 +79,7 @@ This creates or reuses a branch such as `chore/bump-version-1.2.4`, commits the 
 | `github-token` | No | `${{ github.token }}` | Token used for checks and PR creation. |
 | `overwrite-existing-branch` | No | `false` | Overwrite an existing bump branch when no open pull request is found for it. |
 | `commit-message` | No | `Bump version to {version}` | Commit message template. |
+| `pre-commit-commands` | No | | Commands to run after the version bump and before committing changes. One command per line. |
 | `pr-title` | No | `Bump version to {version}` | Pull request title template. |
 | `pr-body` | No | `Bumps version from {current-version} to {next-version} using a {bump} release bump.` | Pull request body template. |
 | `fail-if-tag-exists` | No | `true` | Fail if `${tag-prefix}${next-version}` already exists as a tag. |
@@ -91,6 +92,8 @@ Template inputs support:
 - `{bump}`
 
 If a bump branch already exists but there is no open pull request for it, the action fails by default so it does not overwrite remote work accidentally. Set `overwrite-existing-branch: true` to replace that generated bump branch using `git push --force-with-lease`.
+
+`pre-commit-commands` runs in the checked-out workspace after the version file is updated and before the action creates the bump commit. If any command exits with a non-zero status, the action fails before pushing the branch or opening the pull request. Any files changed, created, or deleted by those commands are included in the same bump commit.
 
 ## Outputs
 
@@ -112,6 +115,8 @@ permissions:
   contents: write
   pull-requests: write
 ```
+
+Repository setting required: in **Settings > Actions > General**, enable **Allow GitHub Actions to create and approve pull requests**. Without this setting, the action can push the bump branch but cannot open the pull request.
 
 Use `actions/checkout` with the target base branch and `fetch-depth: 0`.
 
@@ -192,6 +197,10 @@ jobs:
           base-branch: ${{ inputs.base_branch }}
           strategy: gradle-kts
           version-file: mockguard/build.gradle.kts
+          pre-commit-commands: |
+            pnpm install --frozen-lockfile
+            pnpm run build
+            make build-all-workspaces
 ```
 
 ## Regex

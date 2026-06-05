@@ -53,7 +53,9 @@ export class NpmStrategy implements VersionStrategy {
     try {
       return JSON.parse(raw) as PackageJson;
     } catch (error) {
-      throw new Error(`Could not parse ${this.filePath} as JSON: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Could not parse ${this.filePath} as JSON: ${error instanceof Error ? error.message : String(error)}`, {
+        cause: error,
+      });
     }
   }
 }
