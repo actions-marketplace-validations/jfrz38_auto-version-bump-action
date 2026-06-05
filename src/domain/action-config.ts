@@ -1,6 +1,7 @@
 import type { ActionInputs } from '../inputs';
 import { BooleanInput } from './boolean-input';
 import { Bump } from './bump';
+import { PreCommitCommands } from './pre-commit-commands';
 import { StrategyName } from './strategy-name';
 
 export class ActionConfig {
@@ -13,6 +14,7 @@ export class ActionConfig {
   readonly failIfTagExists: boolean;
   readonly githubToken: string;
   readonly overwriteExistingBranch: boolean;
+  readonly preCommitCommands: PreCommitCommands;
   readonly prBody: string;
   readonly prTitle: string;
   readonly strategy: StrategyName;
@@ -31,6 +33,7 @@ export class ActionConfig {
     this.failIfTagExists = BooleanInput.fromInput('fail-if-tag-exists', inputs.failIfTagExists, true).value;
     this.githubToken = inputs.githubToken;
     this.overwriteExistingBranch = BooleanInput.fromInput('overwrite-existing-branch', inputs.overwriteExistingBranch, false).value;
+    this.preCommitCommands = PreCommitCommands.fromInput(inputs.preCommitCommands);
     this.prBody = inputs.prBody || 'Bumps version from {current-version} to {next-version} using a {bump} release bump.';
     this.prTitle = inputs.prTitle || 'Bump version to {version}';
     this.strategy = StrategyName.fromInput(inputs.strategy);

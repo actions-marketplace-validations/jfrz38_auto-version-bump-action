@@ -8,8 +8,9 @@ import { SimpleVersion } from '../domain/simple-version';
 import { Tag } from '../domain/tag';
 import { type VersionStrategy } from '../domain/version-strategy';
 import { assertReleaseDoesNotExist, assertTagDoesNotExist, createGitHubClient, createPullRequest, findOpenPullRequest, getDefaultBranch } from '../github';
-import { checkoutBumpBranch, commitAndPush, getRemoteBranchSha } from '../git';
+import { checkoutBumpBranch, commitAndPush, getChangedFiles, getRemoteBranchSha } from '../git';
 import { toGitPath, uniqueValues } from '../path-utils';
+import { PreCommitCommandsRunner } from './pre-commit-commands-runner';
 import { type TemplateRenderService } from './template-renderer';
 
 export interface ActionOutputs {
@@ -88,10 +89,16 @@ async function executeVersionBumpPr(
   }
 
   const beforeContents = await snapshotFiles(cwd, potentialChangedFiles(config.versionFile));
+  const baselineChangedFiles = await getChangedFiles();
   const changedFiles = uniqueValues((await strategy.writeNextVersion(nextVersionText)).map((filePath) => toGitPath(cwd, filePath)));
   const changedAfterWrite = await filterActuallyChangedFiles(cwd, changedFiles, beforeContents);
 
   if (changedAfterWrite.length === 0) {
+    throw new Error('No version change was applied.');
+  }
+
+  const changedAfterCommands = await new PreCommitCommandsRunner(cwd).run(config.preCommitCommands, baselineChangedFiles);
+  if (changedAfterCommands.length === 0) {
     throw new Error('No version change was applied.');
   }
 
@@ -106,7 +113,7 @@ async function executeVersionBumpPr(
     tag,
   );
 
-  await commitAndPush(branch.name, changedAfterWrite, commit.message, remoteBranchSha);
+  await commitAndPush(branch.name, changedAfterCommands, commit.message, remoteBranchSha);
   const pullRequest = await createPullRequest(octokit, {
     baseBranch: pullRequestRequest.baseBranch.name,
     branch: pullRequestRequest.headBranch.name,
@@ -119,7 +126,7 @@ async function executeVersionBumpPr(
 
   return {
     branch: branch.name,
-    changedFiles: changedAfterWrite.join('\n'),
+    changedFiles: changedAfterCommands.join('\n'),
     currentVersion: currentVersionText,
     nextVersion: nextVersionText,
     prUrl: pullRequest.url,

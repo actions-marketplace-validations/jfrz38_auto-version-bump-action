@@ -45,6 +45,9 @@ inputs:
     description: 'Commit message template. Supports {version}, {current-version}, {next-version}, and {bump}.'
     required: false
     default: 'Bump version to {version}'
+  pre-commit-commands:
+    description: 'Commands to run after version bump and before committing changes. One command per line.'
+    required: false
   pr-title:
     description: 'Pull request title template. Supports {version}, {current-version}, {next-version}, and {bump}.'
     required: false
