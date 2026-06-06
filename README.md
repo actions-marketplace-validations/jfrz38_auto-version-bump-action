@@ -95,6 +95,72 @@ If a bump branch already exists but there is no open pull request for it, the ac
 
 `pre-commit-commands` runs in the checked-out workspace after the version file is updated and before the action creates the bump commit. If any command exits with a non-zero status, the action fails before pushing the branch or opening the pull request. Any files changed, created, or deleted by those commands are included in the same bump commit.
 
+## Pre-Commit Command Environment
+
+`pre-commit-commands` uses the binaries available in the current GitHub Actions job environment. This action does not install project-specific tools automatically.
+
+Prepare any required runtime, package manager, or build tool before this action runs. For example, `pnpm`, `poetry`, `make`, Java, Gradle, Rust, or Go may need setup steps depending on the runner image and the versions your project requires.
+
+For Node projects that use `pnpm`, prepare Node and enable Corepack before running the action:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+
+- uses: actions/setup-node@v4
+  with:
+    node-version: 22
+    cache: pnpm
+
+- run: corepack enable
+
+- run: pnpm install --frozen-lockfile
+
+- uses: jfrz38/auto-version-bump-action@v0
+  with:
+    bump: minor
+    strategy: npm
+    version-file: packages/cli/package.json
+    pre-commit-commands: make package-github-action
+```
+
+You can also include simple setup directly in `pre-commit-commands`. Use one command per line:
+
+```yaml
+- uses: jfrz38/auto-version-bump-action@v0
+  with:
+    bump: minor
+    strategy: npm
+    version-file: packages/cli/package.json
+    pre-commit-commands: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      make package-github-action
+```
+
+For Python projects that use Poetry, install Poetry before this action or include the setup inline:
+
+```yaml
+- uses: actions/setup-python@v5
+  with:
+    python-version: '3.12'
+    cache: poetry
+
+- run: pipx install poetry
+
+- run: poetry install --no-interaction --no-root
+
+- uses: jfrz38/auto-version-bump-action@v0
+  with:
+    bump: patch
+    strategy: regex
+    version-file: pyproject.toml
+    version-pattern: 'version = "(\d+\.\d+\.\d+)"'
+    version-replacement: 'version = "{version}"'
+    pre-commit-commands: poetry build
+```
+
 ## Outputs
 
 | Output | Description |
@@ -189,6 +255,13 @@ jobs:
         with:
           ref: ${{ inputs.base_branch }}
           fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: corepack enable
 
       - id: bump
         uses: jfrz38/auto-version-bump-action@v0
