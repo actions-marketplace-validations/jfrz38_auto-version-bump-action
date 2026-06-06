@@ -1,3 +1,5 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import * as github from '@actions/github';
 
 export interface PullRequestResult {
@@ -14,7 +16,23 @@ export interface GitHubClientOptions {
   tag: string;
 }
 
+export interface CreateCommitOnBranchOptions {
+  baseBranch: string;
+  branch: string;
+  changedFiles: string[];
+  commitMessage: string;
+  cwd: string;
+  remoteBranchSha?: string;
+}
+
 type Octokit = ReturnType<typeof github.getOctokit>;
+
+type TreeEntry = {
+  mode: '100644';
+  path: string;
+  sha: string | null;
+  type: 'blob';
+};
 
 function ensureRepositoryContext(): { owner: string; repo: string } {
   const { owner, repo } = github.context.repo;
@@ -41,6 +59,58 @@ export function createGitHubClient(githubToken: string): Octokit {
   }
 
   return github.getOctokit(githubToken);
+}
+
+export async function getBranchRefSha(octokit: Octokit, branch: string): Promise<string | undefined> {
+  const { owner, repo } = ensureRepositoryContext();
+
+  try {
+    const response = await octokit.rest.git.getRef({ owner, repo, ref: `heads/${branch}` });
+    return response.data.object.sha;
+  } catch (error) {
+    if (isNotFound(error)) {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+export async function createCommitOnBranch(octokit: Octokit, options: CreateCommitOnBranchOptions): Promise<void> {
+  const { owner, repo } = ensureRepositoryContext();
+  const baseRef = await octokit.rest.git.getRef({ owner, repo, ref: `heads/${options.baseBranch}` });
+  const baseCommitSha = baseRef.data.object.sha;
+  const baseCommit = await octokit.rest.git.getCommit({ owner, repo, commit_sha: baseCommitSha });
+  const tree: TreeEntry[] = [];
+
+  for (const filePath of options.changedFiles) {
+    const fullPath = path.resolve(options.cwd, filePath);
+    try {
+      const content = await fs.readFile(fullPath, 'base64');
+      const blob = await octokit.rest.git.createBlob({ owner, repo, content, encoding: 'base64' });
+      tree.push({ path: filePath, mode: '100644', type: 'blob', sha: blob.data.sha });
+    } catch (error) {
+      if (!isFileNotFound(error)) {
+        throw error;
+      }
+      tree.push({ path: filePath, mode: '100644', type: 'blob', sha: null });
+    }
+  }
+
+  const newTree = await octokit.rest.git.createTree({ owner, repo, base_tree: baseCommit.data.tree.sha, tree });
+  const commit = await octokit.rest.git.createCommit({
+    owner,
+    repo,
+    message: options.commitMessage,
+    tree: newTree.data.sha,
+    parents: [baseCommitSha],
+  });
+
+  if (options.remoteBranchSha) {
+    await octokit.rest.git.updateRef({ owner, repo, ref: `heads/${options.branch}`, sha: commit.data.sha, force: true });
+    return;
+  }
+
+  await octokit.rest.git.createRef({ owner, repo, ref: `refs/heads/${options.branch}`, sha: commit.data.sha });
 }
 
 export async function assertTagDoesNotExist(octokit: Octokit, tag: string): Promise<void> {
@@ -109,4 +179,8 @@ export async function createPullRequest(octokit: Octokit, options: GitHubClientO
 
 function isNotFound(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'status' in error && error.status === 404;
+}
+
+function isFileNotFound(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
 }

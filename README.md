@@ -5,13 +5,13 @@
 [![GitHub Marketplace](https://img.shields.io/badge/marketplace-check--version--change-blue?logo=githubactions)](https://github.com/marketplace/actions/auto-version-bump-action)
 [![License](https://img.shields.io/github/license/jfrz38/auto-version-bump-action)](LICENSE)
 
-Reusable GitHub Action that bumps a simple SemVer version, commits the change to a bump branch, pushes it, and opens a draft pull request.
+Reusable GitHub Action that bumps a simple SemVer version, creates a GitHub API commit on a bump branch, and opens a draft pull request.
 
 It is designed for release-preparation workflows where a maintainer reviews and merges the version bump before a separate release workflow creates tags, GitHub Releases, or publishes artifacts.
 
 ## Quick start
 
-Use this action after `actions/checkout` and give the workflow permission to push a branch and open a pull request.
+Use this action after `actions/checkout` and give the workflow permission to write repository contents and open a pull request.
 
 ```yaml
 name: Bump Version
@@ -43,7 +43,7 @@ jobs:
           version-file: package.json
 ```
 
-This creates or reuses a branch such as `chore/bump-version-1.2.4`, commits the version change, and opens a draft pull request.
+This creates or reuses a branch such as `chore/bump-version-1.2.4`, commits the version change through the GitHub API, and opens a draft pull request.
 
 ## What it does
 
@@ -52,7 +52,7 @@ This creates or reuses a branch such as `chore/bump-version-1.2.4`, commits the 
 - Calculates a `patch`, `minor`, or `major` bump.
 - Updates the version file.
 - Fails if the target tag or GitHub Release already exists, unless disabled.
-- Creates and pushes `chore/bump-version-{next-version}` by default.
+- Creates `chore/bump-version-{next-version}` by default using the GitHub API.
 - Opens a GitHub pull request, draft by default.
 - Reuses an existing open PR for the same branch/base instead of creating a duplicate.
 
@@ -76,7 +76,7 @@ This creates or reuses a branch such as `chore/bump-version-1.2.4`, commits the 
 | `branch-prefix` | No | `chore/bump-version-` | Prefix for the bump branch. |
 | `tag-prefix` | No | `v` | Prefix used for tag/release existence checks. |
 | `draft` | No | `true` | Whether to create the pull request as a draft. |
-| `github-token` | No | `${{ github.token }}` | Token used for checks and PR creation. |
+| `github-token` | No | `${{ github.token }}` | Token used for checks, GitHub API commits, branch updates, and PR creation. |
 | `overwrite-existing-branch` | No | `false` | Overwrite an existing bump branch when no open pull request is found for it. |
 | `commit-message` | No | `Bump version to {version}` | Commit message template. |
 | `pre-commit-commands` | No | | Commands to run after the version bump and before committing changes. One command per line. |
@@ -91,9 +91,9 @@ Template inputs support:
 - `{current-version}`
 - `{bump}`
 
-If a bump branch already exists but there is no open pull request for it, the action fails by default so it does not overwrite remote work accidentally. Set `overwrite-existing-branch: true` to replace that generated bump branch using `git push --force-with-lease`.
+If a bump branch already exists but there is no open pull request for it, the action fails by default so it does not overwrite remote work accidentally. Set `overwrite-existing-branch: true` to replace that generated bump branch by updating the remote ref through the GitHub API.
 
-`pre-commit-commands` runs in the checked-out workspace after the version file is updated and before the action creates the bump commit. If any command exits with a non-zero status, the action fails before pushing the branch or opening the pull request. Any files changed, created, or deleted by those commands are included in the same bump commit.
+`pre-commit-commands` runs in the checked-out workspace after the version file is updated and before the action creates the bump commit. If any command exits with a non-zero status, the action fails before creating the branch commit or opening the pull request. Any files changed, created, or deleted by those commands are included in the same bump commit.
 
 ## Pre-Commit Command Environment
 
@@ -182,9 +182,11 @@ permissions:
   pull-requests: write
 ```
 
-Repository setting required: in **Settings > Actions > General**, enable **Allow GitHub Actions to create and approve pull requests**. Without this setting, the action can push the bump branch but cannot open the pull request.
+Repository setting required: in **Settings > Actions > General**, enable **Allow GitHub Actions to create and approve pull requests**. Without this setting, the action can create the bump branch commit but cannot open the pull request.
 
 Use `actions/checkout` with the target base branch and `fetch-depth: 0`.
+
+The bump commit is created through the GitHub Git Data API using `github-token`. With the default `GITHUB_TOKEN`, GitHub creates the commit as `github-actions[bot]`, so it can appear as a verified GitHub Actions bot commit without configuring GPG or SSH signing keys in the consuming workflow.
 
 ## npm
 

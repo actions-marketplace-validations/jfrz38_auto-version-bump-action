@@ -32,7 +32,15 @@ describe('VersionBumpPrUseCase', () => {
   let tempDir: string;
   let octokit: {
     rest: {
-      git: { getRef: ReturnType<typeof vi.fn> };
+      git: {
+        createBlob: ReturnType<typeof vi.fn>;
+        createCommit: ReturnType<typeof vi.fn>;
+        createRef: ReturnType<typeof vi.fn>;
+        createTree: ReturnType<typeof vi.fn>;
+        getCommit: ReturnType<typeof vi.fn>;
+        getRef: ReturnType<typeof vi.fn>;
+        updateRef: ReturnType<typeof vi.fn>;
+      };
       pulls: { create: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn> };
       repos: { getReleaseByTag: ReturnType<typeof vi.fn> };
     };
@@ -45,7 +53,21 @@ describe('VersionBumpPrUseCase', () => {
 
     octokit = {
       rest: {
-        git: { getRef: vi.fn().mockRejectedValue({ status: 404 }) },
+        git: {
+          createBlob: vi.fn().mockResolvedValue({ data: { sha: 'blob-sha' } }),
+          createCommit: vi.fn().mockResolvedValue({ data: { sha: 'commit-sha' } }),
+          createRef: vi.fn().mockResolvedValue({ data: { ref: 'refs/heads/chore/bump-version-1.2.4' } }),
+          createTree: vi.fn().mockResolvedValue({ data: { sha: 'tree-sha' } }),
+          getCommit: vi.fn().mockResolvedValue({ data: { tree: { sha: 'base-tree-sha' } } }),
+          getRef: vi.fn().mockImplementation(({ ref }: { ref: string }) => {
+            if (ref === 'heads/develop') {
+              return Promise.resolve({ data: { object: { sha: 'base-commit-sha' } } });
+            }
+
+            return Promise.reject({ status: 404 });
+          }),
+          updateRef: vi.fn().mockResolvedValue({ data: { ref: 'refs/heads/chore/bump-version-1.2.4' } }),
+        },
         pulls: {
           create: vi.fn().mockResolvedValue({ data: { html_url: 'https://github.com/jfrz38/demo/pull/1' } }),
           list: vi.fn().mockResolvedValue({ data: [] }),
@@ -74,7 +96,7 @@ describe('VersionBumpPrUseCase', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('bumps the version, pushes a branch, and creates a draft pull request', async () => {
+  it('bumps the version, creates a GitHub API commit, and creates a draft pull request', async () => {
     const result = await executeUseCase();
 
     expect(result).toMatchObject({
@@ -88,8 +110,23 @@ describe('VersionBumpPrUseCase', () => {
     expect(fs.readFileSync(path.join(tempDir, 'build.gradle.kts'), 'utf8')).toBe('version = "1.2.4"\n');
     expect(execMock.exec).toHaveBeenCalledWith('git', ['fetch', 'origin', 'develop', '--depth=1']);
     expect(execMock.exec).toHaveBeenCalledWith('git', ['checkout', '-B', 'chore/bump-version-1.2.4', 'origin/develop']);
-    expect(execMock.exec).toHaveBeenCalledWith('git', ['commit', '-m', 'Bump version to 1.2.4']);
-    expect(execMock.exec).toHaveBeenCalledWith('git', ['push', '--set-upstream', 'origin', 'chore/bump-version-1.2.4']);
+    expect(execMock.exec).not.toHaveBeenCalledWith('git', ['commit', '-m', 'Bump version to 1.2.4']);
+    expect(execMock.exec).not.toHaveBeenCalledWith('git', expect.arrayContaining(['push']));
+    expect(octokit.rest.git.createBlob).toHaveBeenCalledWith(
+      expect.objectContaining({ content: Buffer.from('version = "1.2.4"\n').toString('base64'), encoding: 'base64' }),
+    );
+    expect(octokit.rest.git.createTree).toHaveBeenCalledWith(
+      expect.objectContaining({
+        base_tree: 'base-tree-sha',
+        tree: [{ path: 'build.gradle.kts', mode: '100644', type: 'blob', sha: 'blob-sha' }],
+      }),
+    );
+    expect(octokit.rest.git.createCommit).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Bump version to 1.2.4', parents: ['base-commit-sha'], tree: 'tree-sha' }),
+    );
+    expect(octokit.rest.git.createRef).toHaveBeenCalledWith(
+      expect.objectContaining({ ref: 'refs/heads/chore/bump-version-1.2.4', sha: 'commit-sha' }),
+    );
     expect(octokit.rest.pulls.create).toHaveBeenCalledWith(
       expect.objectContaining({
         base: 'develop',
@@ -101,16 +138,12 @@ describe('VersionBumpPrUseCase', () => {
   });
 
   it('fails before changing files when the remote bump branch already exists without an open pull request', async () => {
-    execMock.getExecOutput.mockImplementation((_command: string, args: string[]) => {
-      if (args[0] === 'ls-remote') {
-        return Promise.resolve({
-          stdout: 'abc1234567890abcdef\trefs/heads/chore/bump-version-1.2.4\n',
-          stderr: '',
-          exitCode: 0,
-        });
+    octokit.rest.git.getRef.mockImplementation(({ ref }: { ref: string }) => {
+      if (ref === 'heads/chore/bump-version-1.2.4') {
+        return Promise.resolve({ data: { object: { sha: 'abc1234567890abcdef' } } });
       }
 
-      return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
+      return Promise.reject({ status: 404 });
     });
 
     await expect(executeUseCase()).rejects.toThrow(
@@ -120,9 +153,10 @@ describe('VersionBumpPrUseCase', () => {
     expect(execMock.exec).not.toHaveBeenCalledWith('git', ['checkout', '-B', 'chore/bump-version-1.2.4', 'origin/develop']);
     expect(execMock.exec).not.toHaveBeenCalledWith('git', ['commit', '-m', expect.any(String)]);
     expect(execMock.exec).not.toHaveBeenCalledWith('git', expect.arrayContaining(['push']));
+    expect(octokit.rest.git.createCommit).not.toHaveBeenCalled();
   });
 
-  it('overwrites an existing remote bump branch with a lease when explicitly enabled', async () => {
+  it('updates an existing remote bump branch when explicitly enabled', async () => {
     let statusCalls = 0;
     execMock.getExecOutput.mockImplementation((_command: string, args: string[]) => {
       if (args[0] === 'status') {
@@ -133,26 +167,26 @@ describe('VersionBumpPrUseCase', () => {
 
         return Promise.resolve({ stdout: ' M build.gradle.kts\0', stderr: '', exitCode: 0 });
       }
-      if (args[0] === 'ls-remote') {
-        return Promise.resolve({
-          stdout: 'abc1234567890abcdef\trefs/heads/chore/bump-version-1.2.4\n',
-          stderr: '',
-          exitCode: 0,
-        });
+      return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
+    });
+    octokit.rest.git.getRef.mockImplementation(({ ref }: { ref: string }) => {
+      if (ref === 'heads/chore/bump-version-1.2.4') {
+        return Promise.resolve({ data: { object: { sha: 'abc1234567890abcdef' } } });
+      }
+      if (ref === 'heads/develop') {
+        return Promise.resolve({ data: { object: { sha: 'base-commit-sha' } } });
       }
 
-      return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
+      return Promise.reject({ status: 404 });
     });
 
     await executeUseCase({ overwriteExistingBranch: 'true' });
 
-    expect(execMock.exec).toHaveBeenCalledWith('git', [
-      'push',
-      '--force-with-lease=refs/heads/chore/bump-version-1.2.4:abc1234567890abcdef',
-      '--set-upstream',
-      'origin',
-      'chore/bump-version-1.2.4',
-    ]);
+    expect(octokit.rest.git.updateRef).toHaveBeenCalledWith(
+      expect.objectContaining({ ref: 'heads/chore/bump-version-1.2.4', sha: 'commit-sha', force: true }),
+    );
+    expect(octokit.rest.git.createRef).not.toHaveBeenCalled();
+    expect(execMock.exec).not.toHaveBeenCalledWith('git', expect.arrayContaining(['push']));
   });
 
   it('returns an existing open pull request without creating a duplicate', async () => {
@@ -164,10 +198,17 @@ describe('VersionBumpPrUseCase', () => {
     expect(result.changedFiles).toBe('');
     expect(octokit.rest.pulls.create).not.toHaveBeenCalled();
     expect(execMock.exec).not.toHaveBeenCalledWith('git', ['commit', '-m', expect.any(String)]);
+    expect(octokit.rest.git.createCommit).not.toHaveBeenCalled();
   });
 
   it('fails when the tag already exists and the safeguard is enabled', async () => {
-    octokit.rest.git.getRef.mockResolvedValue({ data: { ref: 'refs/tags/v1.2.4' } });
+    octokit.rest.git.getRef.mockImplementation(({ ref }: { ref: string }) => {
+      if (ref === 'tags/v1.2.4') {
+        return Promise.resolve({ data: { ref: 'refs/tags/v1.2.4' } });
+      }
+
+      return Promise.reject({ status: 404 });
+    });
 
     await expect(executeUseCase()).rejects.toThrow('Tag v1.2.4 already exists');
   });
@@ -179,6 +220,8 @@ describe('VersionBumpPrUseCase', () => {
   });
 
   it('runs pre-commit commands after bumping the version and commits generated files', async () => {
+    fs.mkdirSync(path.join(tempDir, 'dist'));
+    fs.writeFileSync(path.join(tempDir, 'dist', 'index.js'), 'generated bundle\n');
     let statusCalls = 0;
     execMock.getExecOutput.mockImplementation((_command: string, args: string[]) => {
       if (args[0] === 'status') {
@@ -197,16 +240,46 @@ describe('VersionBumpPrUseCase', () => {
 
     expect(result.changedFiles).toBe('build.gradle.kts\ndist/index.js');
     expect(execMock.exec).toHaveBeenCalledWith('make package-github-action', [], { cwd: tempDir });
-    expect(execMock.exec).toHaveBeenCalledWith('git', ['add', 'build.gradle.kts', 'dist/index.js']);
     expect(invocationIndex('make package-github-action')).toBeGreaterThan(invocationIndex('git', ['checkout', '-B', 'chore/bump-version-1.2.4', 'origin/develop']));
-    expect(invocationIndex('make package-github-action')).toBeLessThan(invocationIndex('git', ['add', 'build.gradle.kts', 'dist/index.js']));
+    expect(octokit.rest.git.createTree).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tree: expect.arrayContaining([
+          expect.objectContaining({ path: 'build.gradle.kts', sha: 'blob-sha' }),
+          expect.objectContaining({ path: 'dist/index.js', sha: 'blob-sha' }),
+        ]),
+      }),
+    );
   });
 
   it('runs multiline pre-commit commands in order', async () => {
     await executeUseCase({ preCommitCommands: 'pnpm install\npnpm run build' });
 
     expect(invocationIndex('pnpm install')).toBeLessThan(invocationIndex('pnpm run build'));
-    expect(invocationIndex('pnpm run build')).toBeLessThan(invocationIndex('git', ['add', 'build.gradle.kts']));
+    expect(octokit.rest.git.createCommit).toHaveBeenCalled();
+  });
+
+  it('adds deleted files to the GitHub tree with a null sha', async () => {
+    let statusCalls = 0;
+    execMock.getExecOutput.mockImplementation((_command: string, args: string[]) => {
+      if (args[0] === 'status') {
+        statusCalls += 1;
+        if (statusCalls === 1) {
+          return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
+        }
+
+        return Promise.resolve({ stdout: ' M build.gradle.kts\0 D generated.txt\0', stderr: '', exitCode: 0 });
+      }
+
+      return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
+    });
+
+    await executeUseCase({ preCommitCommands: 'make package-github-action' });
+
+    expect(octokit.rest.git.createTree).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tree: expect.arrayContaining([expect.objectContaining({ path: 'generated.txt', mode: '100644', type: 'blob', sha: null })]),
+      }),
+    );
   });
 
   async function executeUseCase(inputOverrides: Partial<ActionInputs> = {}) {

@@ -7,8 +7,17 @@ import { PullRequest } from '../domain/pull-request';
 import { SimpleVersion } from '../domain/simple-version';
 import { Tag } from '../domain/tag';
 import { type VersionStrategy } from '../domain/version-strategy';
-import { assertReleaseDoesNotExist, assertTagDoesNotExist, createGitHubClient, createPullRequest, findOpenPullRequest, getDefaultBranch } from '../github';
-import { checkoutBumpBranch, commitAndPush, getChangedFiles, getRemoteBranchSha } from '../git';
+import {
+  assertReleaseDoesNotExist,
+  assertTagDoesNotExist,
+  createCommitOnBranch,
+  createGitHubClient,
+  createPullRequest,
+  findOpenPullRequest,
+  getBranchRefSha,
+  getDefaultBranch,
+} from '../github';
+import { checkoutBumpBranch, getChangedFiles } from '../git';
 import { toGitPath, uniqueValues } from '../path-utils';
 import { PreCommitCommandsRunner } from './pre-commit-commands-runner';
 import { type TemplateRenderService } from './template-renderer';
@@ -77,7 +86,7 @@ async function executeVersionBumpPr(
     };
   }
 
-  const remoteBranchSha = await getRemoteBranchSha(branch.name);
+  const remoteBranchSha = await getBranchRefSha(octokit, branch.name);
   branch.assertCanUseRemoteState(remoteBranchSha, config.overwriteExistingBranch);
 
   await checkoutBumpBranch(baseBranch.name, branch.name);
@@ -113,7 +122,14 @@ async function executeVersionBumpPr(
     tag,
   );
 
-  await commitAndPush(branch.name, changedAfterCommands, commit.message, remoteBranchSha);
+  await createCommitOnBranch(octokit, {
+    baseBranch: baseBranch.name,
+    branch: branch.name,
+    changedFiles: changedAfterCommands,
+    commitMessage: commit.message,
+    cwd,
+    remoteBranchSha,
+  });
   const pullRequest = await createPullRequest(octokit, {
     baseBranch: pullRequestRequest.baseBranch.name,
     branch: pullRequestRequest.headBranch.name,
