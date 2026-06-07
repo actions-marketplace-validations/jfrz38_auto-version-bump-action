@@ -11,6 +11,10 @@ export class GradleKtsStrategy implements VersionStrategy {
     this.filePath = path.resolve(cwd, versionFile);
   }
 
+  getPotentialChangedFiles(): string[] {
+    return [this.filePath];
+  }
+
   async readCurrentVersion(): Promise<string> {
     const content = await fs.readFile(this.filePath, 'utf8');
     const matches = [...content.matchAll(VERSION_ASSIGNMENT_PATTERN)];

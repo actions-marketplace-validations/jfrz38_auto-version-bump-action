@@ -197,6 +197,10 @@ class TestVersionStrategy implements VersionStrategy {
     this.filePath = path.resolve(cwd, versionFile);
   }
 
+  getPotentialChangedFiles(): string[] {
+    return [this.filePath];
+  }
+
   async readCurrentVersion(): Promise<string> {
     const content = await fs.promises.readFile(this.filePath, 'utf8');
     const match = /version = "(\d+\.\d+\.\d+)"/.exec(content);

@@ -13,6 +13,10 @@ export class RegexStrategy implements VersionStrategy {
     this.replacement = versionReplacement;
   }
 
+  getPotentialChangedFiles(): string[] {
+    return [this.filePath];
+  }
+
   async readCurrentVersion(): Promise<string> {
     const content = await fs.readFile(this.filePath, 'utf8');
     const match = this.pattern.exec(content);

@@ -59,6 +59,7 @@ class MockGitHubRepository implements GitHubRepository {
 
 function createStrategy(currentVersion: string): () => VersionStrategy {
   return () => ({
+    getPotentialChangedFiles: vi.fn().mockReturnValue(['/workspace/build.gradle.kts']),
     readCurrentVersion: vi.fn().mockResolvedValue(currentVersion),
     writeNextVersion: vi.fn(),
   });

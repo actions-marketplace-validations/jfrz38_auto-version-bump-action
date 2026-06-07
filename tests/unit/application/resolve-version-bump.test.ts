@@ -43,6 +43,7 @@ class MockDefaultBranchProvider implements DefaultBranchProvider {
 
 function createStrategy(): VersionStrategy {
   return {
+    getPotentialChangedFiles: vi.fn().mockReturnValue(['/workspace/build.gradle.kts']),
     readCurrentVersion: vi.fn().mockResolvedValue('1.2.3'),
     writeNextVersion: vi.fn(),
   };

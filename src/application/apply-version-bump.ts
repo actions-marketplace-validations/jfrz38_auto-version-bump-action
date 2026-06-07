@@ -18,7 +18,7 @@ export class ApplyVersionBump {
 
   async execute(config: ActionConfig, cwd: string, plan: VersionBumpPlan): Promise<ChangedFiles> {
     const strategy = this.createStrategy(cwd, config);
-    const beforeContents = await this.snapshotFiles(cwd, potentialChangedFiles(config.versionFile));
+    const beforeContents = await this.snapshotFiles(cwd, strategy.getPotentialChangedFiles());
     const baselineChangedFiles = await this.gitRepository.getChangedFiles();
     const changedFiles = ChangedFiles.from((await strategy.writeNextVersion(plan.nextVersionText)).map((filePath) => this.gitPathResolver.toGitPath(cwd, filePath)));
     const changedAfterWrite = ChangedFiles.from(await this.filterActuallyChangedFiles(cwd, changedFiles.values, beforeContents));
@@ -59,12 +59,4 @@ export class ApplyVersionBump {
     }
     return changedFiles;
   }
-}
-
-function potentialChangedFiles(versionFile: string): string[] {
-  if (path.basename(versionFile) !== 'package.json') {
-    return [versionFile];
-  }
-
-  return [versionFile, path.join(path.dirname(versionFile), 'package-lock.json')];
 }
