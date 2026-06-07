@@ -258,13 +258,6 @@ jobs:
           ref: ${{ inputs.base_branch }}
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - run: corepack enable
-
       - id: bump
         uses: jfrz38/auto-version-bump-action@v0
         with:
@@ -272,10 +265,6 @@ jobs:
           base-branch: ${{ inputs.base_branch }}
           strategy: gradle-kts
           version-file: mockguard/build.gradle.kts
-          pre-commit-commands: |
-            pnpm install --frozen-lockfile
-            pnpm run build
-            make build-all-workspaces
 ```
 
 ## Regex
