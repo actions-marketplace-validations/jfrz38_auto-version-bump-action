@@ -48,7 +48,18 @@ describe('release checks', () => {
   });
 });
 
-function createMockOctokit() {
+type MockOctokit = Parameters<typeof assertTagDoesNotExist>[0] & {
+  rest: {
+    git: {
+      getRef: ReturnType<typeof vi.fn>;
+    };
+    repos: {
+      getReleaseByTag: ReturnType<typeof vi.fn>;
+    };
+  };
+};
+
+function createMockOctokit(): MockOctokit {
   return {
     rest: {
       git: {
@@ -58,5 +69,5 @@ function createMockOctokit() {
         getReleaseByTag: vi.fn(),
       },
     },
-  } as any;
+  } as unknown as MockOctokit;
 }

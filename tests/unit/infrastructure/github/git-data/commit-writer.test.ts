@@ -106,9 +106,21 @@ describe('createCommitOnBranch', () => {
   });
 });
 
-type MockOctokit = ReturnType<typeof createMockOctokit>;
+type MockOctokit = Parameters<typeof createCommitOnBranch>[0] & {
+  rest: {
+    git: {
+      createBlob: ReturnType<typeof vi.fn>;
+      createCommit: ReturnType<typeof vi.fn>;
+      createRef: ReturnType<typeof vi.fn>;
+      createTree: ReturnType<typeof vi.fn>;
+      getCommit: ReturnType<typeof vi.fn>;
+      getRef: ReturnType<typeof vi.fn>;
+      updateRef: ReturnType<typeof vi.fn>;
+    };
+  };
+};
 
-function createMockOctokit() {
+function createMockOctokit(): MockOctokit {
   let blobCount = 0;
 
   return {
@@ -126,5 +138,5 @@ function createMockOctokit() {
         updateRef: vi.fn().mockResolvedValue({ data: { ref: 'refs/heads/chore/bump-version-1.2.4' } }),
       },
     },
-  } as any;
+  } as unknown as MockOctokit;
 }

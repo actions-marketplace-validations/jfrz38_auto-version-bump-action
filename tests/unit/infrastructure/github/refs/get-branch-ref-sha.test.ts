@@ -32,12 +32,20 @@ describe('getBranchRefSha', () => {
   });
 });
 
-function createMockOctokit() {
+type MockOctokit = Parameters<typeof getBranchRefSha>[0] & {
+  rest: {
+    git: {
+      getRef: ReturnType<typeof vi.fn>;
+    };
+  };
+};
+
+function createMockOctokit(): MockOctokit {
   return {
     rest: {
       git: {
         getRef: vi.fn(),
       },
     },
-  } as any;
+  } as unknown as MockOctokit;
 }

@@ -57,7 +57,16 @@ describe('pull request GitHub API helpers', () => {
   });
 });
 
-function createMockOctokit() {
+type MockOctokit = Parameters<typeof findOpenPullRequest>[0] & {
+  rest: {
+    pulls: {
+      create: ReturnType<typeof vi.fn>;
+      list: ReturnType<typeof vi.fn>;
+    };
+  };
+};
+
+function createMockOctokit(): MockOctokit {
   return {
     rest: {
       pulls: {
@@ -65,5 +74,5 @@ function createMockOctokit() {
         list: vi.fn(),
       },
     },
-  } as any;
+  } as unknown as MockOctokit;
 }
