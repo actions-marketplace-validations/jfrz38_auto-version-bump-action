@@ -309,7 +309,10 @@ version = "1.2.3"
     version-file: Cargo.toml
     version-pattern: '^version\s*=\s*"(\d+\.\d+\.\d+)"'
     version-replacement: 'version = "{version}"'
+    pre-commit-commands: cargo check
 ```
+
+If the repository commits `Cargo.lock`, run a Cargo command such as `cargo check` so Cargo can keep the lockfile consistent with the updated package version.
 
 ## Release flow
 
