@@ -132,7 +132,7 @@ describe('VersionBumpPrUseCase', () => {
     expect(githubRepository.createCommitOnBranch).toHaveBeenCalled();
   });
 
-  it('includes deleted files in changed files passed to the commit writer', async () => {
+  it('passes all changed files to the commit writer after pre-commit commands', async () => {
     gitRepository.changedFiles = [[], ['build.gradle.kts', 'generated.txt']];
 
     await executeUseCase({ preCommitCommands: 'make package-github-action' });
