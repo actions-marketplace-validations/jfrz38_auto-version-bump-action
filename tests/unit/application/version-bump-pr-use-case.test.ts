@@ -2,15 +2,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CommandExecutor } from '../../../src/application/ports/command-executor';
-import type { DefaultBranchProvider } from '../../../src/application/ports/default-branch-provider';
-import type { GitPathResolver } from '../../../src/application/ports/git-path-resolver';
-import type { GitRepository } from '../../../src/application/ports/git-repository';
-import type { GitHubRepository } from '../../../src/application/ports/github-repository';
 import { TemplateRenderer } from '../../../src/application/template-renderer';
 import { VersionBumpPrUseCase } from '../../../src/application/version-bump-pr-use-case';
 import { ActionConfig } from '../../../src/domain/config/action-config';
 import type { ActionConfigInput } from '../../../src/domain/config/action-config-input';
+import type { CommandExecutor } from '../../../src/domain/ports/command-executor';
+import type { DefaultBranchProvider } from '../../../src/domain/ports/default-branch-provider';
+import type { GitPathResolver } from '../../../src/domain/ports/git-path-resolver';
+import type { GitRepository } from '../../../src/domain/ports/git-repository';
+import type { GitHubRepository } from '../../../src/domain/ports/github-repository';
 import type { VersionStrategy } from '../../../src/domain/versioning/version-strategy';
 
 describe('VersionBumpPrUseCase', () => {

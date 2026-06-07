@@ -1,5 +1,5 @@
 import * as exec from '@actions/exec';
-import type { GitRepository } from '../../application/ports/git-repository';
+import type { GitRepository } from '../../domain/ports/git-repository';
 import { GitStatus } from './git-status';
 
 const GIT_COMMAND = 'git';

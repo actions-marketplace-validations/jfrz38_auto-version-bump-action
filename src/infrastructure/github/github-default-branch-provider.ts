@@ -1,5 +1,5 @@
 import * as github from '@actions/github';
-import type { DefaultBranchProvider } from '../../application/ports/default-branch-provider';
+import type { DefaultBranchProvider } from '../../domain/ports/default-branch-provider';
 
 export class GitHubDefaultBranchProvider implements DefaultBranchProvider {
   getDefaultBranch(): string {

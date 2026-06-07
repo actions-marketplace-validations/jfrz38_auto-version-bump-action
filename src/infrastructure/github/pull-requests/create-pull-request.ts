@@ -1,4 +1,4 @@
-import type { CreatePullRequestOptions, PullRequestResult } from '../../../application/ports/github-repository';
+import type { CreatePullRequestOptions, PullRequestResult } from '../../../domain/ports/github-repository';
 import type { Octokit } from '../client';
 import { ensureRepositoryContext } from '../context';
 

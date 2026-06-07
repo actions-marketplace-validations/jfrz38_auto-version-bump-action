@@ -1,10 +1,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { type ActionConfig } from '../domain/config/action-config';
+import type { GitPathResolver } from '../domain/ports/git-path-resolver';
+import type { GitRepository } from '../domain/ports/git-repository';
 import { ChangedFiles } from '../domain/version-bump/changed-files';
 import type { VersionBumpPlan } from '../domain/version-bump/version-bump-plan';
-import type { GitPathResolver } from './ports/git-path-resolver';
-import type { GitRepository } from './ports/git-repository';
 import { PreCommitCommandsRunner } from './pre-commit-commands-runner';
 import type { VersionStrategyFactory } from './version-bump-pr-use-case';
 
@@ -14,7 +14,7 @@ export class ApplyVersionBump {
     private readonly gitRepository: GitRepository,
     private readonly preCommitCommandsRunner: PreCommitCommandsRunner,
     private readonly gitPathResolver: GitPathResolver,
-  ) {}
+  ) { }
 
   async execute(config: ActionConfig, cwd: string, plan: VersionBumpPlan): Promise<ChangedFiles> {
     const strategy = this.createStrategy(cwd, config);

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { EnsureReleaseTargetIsAvailable } from '../../../src/application/ensure-release-target-is-available';
-import type { GitHubRepository } from '../../../src/application/ports/github-repository';
 import { ActionConfig } from '../../../src/domain/config/action-config';
 import type { ActionConfigInput } from '../../../src/domain/config/action-config-input';
+import type { GitHubRepository } from '../../../src/domain/ports/github-repository';
 import { Branch } from '../../../src/domain/release-proposal/branch';
 import { Tag } from '../../../src/domain/release-proposal/tag';
 import { VersionBumpPlan } from '../../../src/domain/version-bump/version-bump-plan';

@@ -3,15 +3,15 @@ import type {
   CreatePullRequestOptions,
   GitHubRepository,
   PullRequestResult,
-} from '../../application/ports/github-repository';
+} from '../../domain/ports/github-repository';
 import { createGitHubClient, type Octokit } from './client';
 import { createCommitOnBranch } from './git-data';
-import { findOpenPullRequest, createPullRequest } from './pull-requests';
-import { assertReleaseDoesNotExist, assertTagDoesNotExist } from './release-checks';
+import { createPullRequest, findOpenPullRequest } from './pull-requests';
 import { getBranchRefSha } from './refs';
+import { assertReleaseDoesNotExist, assertTagDoesNotExist } from './release-checks';
 
 export class GitHubGateway implements GitHubRepository {
-  private constructor(private readonly octokit: Octokit) {}
+  private constructor(private readonly octokit: Octokit) { }
 
   static create(githubToken: string): GitHubGateway {
     return new GitHubGateway(createGitHubClient(githubToken));

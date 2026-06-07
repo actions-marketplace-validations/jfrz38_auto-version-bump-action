@@ -1,4 +1,4 @@
-import type { CreateCommitOnBranchOptions } from '../../../application/ports/github-repository';
+import type { CreateCommitOnBranchOptions } from '../../../domain/ports/github-repository';
 import type { Octokit } from '../client';
 import { ensureRepositoryContext } from '../context';
 import { HEADS_REF_PREFIX, REFS_HEADS_PREFIX } from './git-data-constants';

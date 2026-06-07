@@ -1,9 +1,9 @@
 import { type ActionConfig } from '../domain/config/action-config';
+import type { GitHubRepository } from '../domain/ports/github-repository';
 import type { VersionBumpPlan } from '../domain/version-bump/version-bump-plan';
-import type { GitHubRepository } from './ports/github-repository';
 
 export class EnsureReleaseTargetIsAvailable {
-  constructor(private readonly github: GitHubRepository) {}
+  constructor(private readonly github: GitHubRepository) { }
 
   async execute(config: ActionConfig, plan: VersionBumpPlan): Promise<void> {
     if (config.failIfTagExists) {

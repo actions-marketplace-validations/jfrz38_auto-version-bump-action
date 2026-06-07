@@ -1,1 +1,1 @@
-export type { CreatePullRequestOptions, PullRequestResult } from '../../../application/ports/github-repository';
+export type { CreatePullRequestOptions, PullRequestResult } from '../../../domain/ports/github-repository';

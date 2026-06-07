@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PreCommitCommandsRunner } from '../../../src/application/pre-commit-commands-runner';
-import type { CommandExecutor } from '../../../src/application/ports/command-executor';
-import type { GitRepository } from '../../../src/application/ports/git-repository';
 import { PreCommitCommands } from '../../../src/domain/config/pre-commit-commands';
+import type { CommandExecutor } from '../../../src/domain/ports/command-executor';
+import type { GitRepository } from '../../../src/domain/ports/git-repository';
 
 describe('PreCommitCommandsRunner', () => {
   let commandExecutor: MockCommandExecutor;

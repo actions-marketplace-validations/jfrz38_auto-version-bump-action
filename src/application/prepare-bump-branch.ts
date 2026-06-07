@@ -1,8 +1,8 @@
 import { type ActionConfig } from '../domain/config/action-config';
+import type { GitRepository } from '../domain/ports/git-repository';
+import type { GitHubRepository, PullRequestResult } from '../domain/ports/github-repository';
 import type { VersionBumpPlan } from '../domain/version-bump/version-bump-plan';
 import { SimpleVersion } from '../domain/versioning/simple-version';
-import type { GitRepository } from './ports/git-repository';
-import type { GitHubRepository, PullRequestResult } from './ports/github-repository';
 import type { VersionStrategyFactory } from './version-bump-pr-use-case';
 
 export interface PreparedBumpBranch {
@@ -15,7 +15,7 @@ export class PrepareBumpBranch {
     private readonly github: GitHubRepository,
     private readonly gitRepository: GitRepository,
     private readonly createStrategy: VersionStrategyFactory,
-  ) {}
+  ) { }
 
   async execute(config: ActionConfig, cwd: string, plan: VersionBumpPlan): Promise<PreparedBumpBranch> {
     const existingPullRequest = await this.github.findOpenPullRequest(plan.baseBranch.name, plan.branch.name);

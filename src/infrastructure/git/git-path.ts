@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { GitPathResolver } from '../../application/ports/git-path-resolver';
+import type { GitPathResolver } from '../../domain/ports/git-path-resolver';
 
 export class NodeGitPathResolver implements GitPathResolver {
   toGitPath(cwd: string, filePath: string): string {

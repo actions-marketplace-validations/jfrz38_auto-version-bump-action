@@ -1,13 +1,13 @@
 import { type ActionConfig } from '../domain/config/action-config';
+import type { CommandExecutor } from '../domain/ports/command-executor';
+import type { DefaultBranchProvider } from '../domain/ports/default-branch-provider';
+import type { GitPathResolver } from '../domain/ports/git-path-resolver';
+import type { GitRepository } from '../domain/ports/git-repository';
+import type { GitHubRepositoryFactory } from '../domain/ports/github-repository';
 import { type VersionStrategy } from '../domain/versioning/version-strategy';
 import { ApplyVersionBump } from './apply-version-bump';
 import { CreateVersionBumpPr } from './create-version-bump-pr';
 import { EnsureReleaseTargetIsAvailable } from './ensure-release-target-is-available';
-import type { CommandExecutor } from './ports/command-executor';
-import type { DefaultBranchProvider } from './ports/default-branch-provider';
-import type { GitPathResolver } from './ports/git-path-resolver';
-import type { GitRepository } from './ports/git-repository';
-import type { GitHubRepositoryFactory } from './ports/github-repository';
 import { PreCommitCommandsRunner } from './pre-commit-commands-runner';
 import { PrepareBumpBranch } from './prepare-bump-branch';
 import { ResolveVersionBump } from './resolve-version-bump';
@@ -35,7 +35,7 @@ export interface VersionBumpPrUseCaseDependencies {
 }
 
 export class VersionBumpPrUseCase {
-  constructor(private readonly dependencies: VersionBumpPrUseCaseDependencies) {}
+  constructor(private readonly dependencies: VersionBumpPrUseCaseDependencies) { }
 
   async execute(config: ActionConfig, cwd: string): Promise<ActionOutputs> {
     const github = this.dependencies.createGitHubRepository(config.githubToken);

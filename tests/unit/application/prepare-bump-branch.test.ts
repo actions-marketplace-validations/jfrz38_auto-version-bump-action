@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { GitRepository } from '../../../src/application/ports/git-repository';
-import type { GitHubRepository } from '../../../src/application/ports/github-repository';
 import { PrepareBumpBranch } from '../../../src/application/prepare-bump-branch';
 import { ActionConfig } from '../../../src/domain/config/action-config';
 import type { ActionConfigInput } from '../../../src/domain/config/action-config-input';
+import type { GitRepository } from '../../../src/domain/ports/git-repository';
+import type { GitHubRepository } from '../../../src/domain/ports/github-repository';
 import { Branch } from '../../../src/domain/release-proposal/branch';
 import { Tag } from '../../../src/domain/release-proposal/tag';
 import { VersionBumpPlan } from '../../../src/domain/version-bump/version-bump-plan';

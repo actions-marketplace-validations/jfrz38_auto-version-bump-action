@@ -1,16 +1,16 @@
 import { type ActionConfig } from '../domain/config/action-config';
+import type { DefaultBranchProvider } from '../domain/ports/default-branch-provider';
 import { Branch } from '../domain/release-proposal/branch';
 import { Tag } from '../domain/release-proposal/tag';
 import { VersionBumpPlan } from '../domain/version-bump/version-bump-plan';
 import { SimpleVersion } from '../domain/versioning/simple-version';
-import type { DefaultBranchProvider } from './ports/default-branch-provider';
 import type { VersionStrategyFactory } from './version-bump-pr-use-case';
 
 export class ResolveVersionBump {
   constructor(
     private readonly createStrategy: VersionStrategyFactory,
     private readonly defaultBranchProvider: DefaultBranchProvider,
-  ) {}
+  ) { }
 
   async execute(config: ActionConfig, cwd: string): Promise<VersionBumpPlan> {
     const strategy = this.createStrategy(cwd, config);

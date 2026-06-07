@@ -1,16 +1,16 @@
 import { type ActionConfig } from '../domain/config/action-config';
+import type { GitHubRepository, PullRequestResult } from '../domain/ports/github-repository';
 import { Commit } from '../domain/release-proposal/commit';
 import { PullRequest } from '../domain/release-proposal/pull-request';
 import type { ChangedFiles } from '../domain/version-bump/changed-files';
 import type { VersionBumpPlan } from '../domain/version-bump/version-bump-plan';
-import type { GitHubRepository, PullRequestResult } from './ports/github-repository';
 import { type TemplateRenderService } from './template-renderer';
 
 export class CreateVersionBumpPr {
   constructor(
     private readonly github: GitHubRepository,
     private readonly renderer: TemplateRenderService,
-  ) {}
+  ) { }
 
   async execute(config: ActionConfig, cwd: string, plan: VersionBumpPlan, changedFiles: ChangedFiles, remoteBranchSha?: string): Promise<PullRequestResult> {
     const templateValues = { bump: config.bump.value, currentVersion: plan.currentVersionText, nextVersion: plan.nextVersionText };

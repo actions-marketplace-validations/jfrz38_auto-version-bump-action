@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { DefaultBranchProvider } from '../../../src/application/ports/default-branch-provider';
 import { ResolveVersionBump } from '../../../src/application/resolve-version-bump';
 import { ActionConfig } from '../../../src/domain/config/action-config';
 import type { ActionConfigInput } from '../../../src/domain/config/action-config-input';
+import type { DefaultBranchProvider } from '../../../src/domain/ports/default-branch-provider';
 import type { VersionStrategy } from '../../../src/domain/versioning/version-strategy';
 
 describe('ResolveVersionBump', () => {
