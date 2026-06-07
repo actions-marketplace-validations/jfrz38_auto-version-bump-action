@@ -144,12 +144,9 @@ For Python projects that use Poetry, install Poetry before this action or includ
 ```yaml
 - uses: actions/setup-python@v5
   with:
-    python-version: '3.12'
-    cache: poetry
-
-- run: pipx install poetry
-
-- run: poetry install --no-interaction --no-root
+    python-version: "3.13"
+- name: Install Poetry
+  run: pip install poetry
 
 - uses: jfrz38/auto-version-bump-action@v0
   with:
