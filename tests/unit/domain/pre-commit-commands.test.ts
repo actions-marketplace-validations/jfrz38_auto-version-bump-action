@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PreCommitCommands } from '../../../src/domain/pre-commit-commands';
+import { PreCommitCommands } from '../../../src/domain/config/pre-commit-commands';
 
 describe('PreCommitCommands', () => {
   it('parses one command per non-empty line', () => {

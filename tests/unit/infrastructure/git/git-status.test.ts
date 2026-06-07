@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GitStatus } from '../../src/git-status';
+import { GitStatus } from '../../../../src/infrastructure/git/git-status';
 
 describe('GitStatus', () => {
   it('returns no changed files for empty status', () => {

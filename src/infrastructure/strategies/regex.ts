@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { VersionStrategy } from '../../domain/version-strategy';
+import type { VersionStrategy } from '../../domain/versioning/version-strategy';
 
 export class RegexStrategy implements VersionStrategy {
   private readonly filePath: string;

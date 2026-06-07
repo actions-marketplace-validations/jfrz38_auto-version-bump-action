@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Commit } from '../../../src/domain/commit';
+import { Commit } from '../../../src/domain/release-proposal/commit';
 
 describe('Commit', () => {
   it('builds commits from rendered messages', () => {

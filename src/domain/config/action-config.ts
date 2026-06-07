@@ -1,8 +1,8 @@
-import type { ActionInputs } from '../inputs';
+import type { ActionConfigInput } from './action-config-input';
 import { BooleanInput } from './boolean-input';
-import { Bump } from './bump';
 import { PreCommitCommands } from './pre-commit-commands';
 import { StrategyName } from './strategy-name';
+import { Bump } from '../versioning/bump';
 
 export class ActionConfig {
   readonly baseBranch: string;
@@ -23,7 +23,7 @@ export class ActionConfig {
   readonly versionPattern: string;
   readonly versionReplacement: string;
 
-  constructor(inputs: ActionInputs) {
+  constructor(inputs: ActionConfigInput) {
     this.baseBranch = inputs.baseBranch.trim();
     this.branchPrefix = inputs.branchPrefix || 'chore/bump-version-';
     this.bump = Bump.fromInput(inputs.bump);

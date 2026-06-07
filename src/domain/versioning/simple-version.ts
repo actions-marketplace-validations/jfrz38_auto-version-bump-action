@@ -1,6 +1,9 @@
 import { type BumpValue } from './bump';
 
 const SIMPLE_SEMVER_PATTERN = /^(\d+)\.(\d+)\.(\d+)$/;
+const PATCH = 'patch';
+const MINOR = 'minor';
+const MAJOR = 'major';
 
 export class SimpleVersion {
   private constructor(
@@ -19,15 +22,19 @@ export class SimpleVersion {
   }
 
   bump(component: BumpValue): SimpleVersion {
-    if (component === 'patch') {
+    if (component === PATCH) {
       return new SimpleVersion(this.major, this.minor, this.patch + 1);
     }
 
-    if (component === 'minor') {
+    if (component === MINOR) {
       return new SimpleVersion(this.major, this.minor + 1, 0);
     }
 
-    return new SimpleVersion(this.major + 1, 0, 0);
+    if (component === MAJOR) {
+      return new SimpleVersion(this.major + 1, 0, 0);
+    }
+
+    throw new Error(`Unsupported bump component "${component}".`);
   }
 
   toString(): string {

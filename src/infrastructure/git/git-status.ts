@@ -1,3 +1,6 @@
+const RENAMED_FILE_STATUS = 'R';
+const COPIED_FILE_STATUS = 'C';
+
 export class GitStatus {
   private constructor(readonly changedFiles: string[]) {}
 
@@ -14,7 +17,7 @@ export class GitStatus {
       }
 
       changedFiles.push(filePath);
-      if (statusCode.includes('R') || statusCode.includes('C')) {
+      if (statusCode.includes(RENAMED_FILE_STATUS) || statusCode.includes(COPIED_FILE_STATUS)) {
         index += 1;
       }
     }

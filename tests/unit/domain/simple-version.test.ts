@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Bump } from '../../../src/domain/bump';
-import { SimpleVersion } from '../../../src/domain/simple-version';
+import { Bump } from '../../../src/domain/versioning/bump';
+import { SimpleVersion } from '../../../src/domain/versioning/simple-version';
 
 describe('SimpleVersion', () => {
   it('bumps simple versions', () => {

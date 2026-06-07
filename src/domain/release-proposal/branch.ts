@@ -1,4 +1,4 @@
-import { SimpleVersion } from './simple-version';
+import { SimpleVersion } from '../versioning/simple-version';
 
 export class Branch {
   private constructor(readonly name: string) {

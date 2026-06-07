@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { VersionStrategy } from '../../domain/version-strategy';
+import type { VersionStrategy } from '../../domain/versioning/version-strategy';
 
 const VERSION_ASSIGNMENT_PATTERN = /(^\s*version\s*=\s*")(\d+\.\d+\.\d+)(".*$)/gm;
 
