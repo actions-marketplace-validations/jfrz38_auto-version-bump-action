@@ -2,216 +2,152 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { VersionBumpPrUseCase } from '../../../src/application/version-bump-pr-use-case';
 import { TemplateRenderer } from '../../../src/application/template-renderer';
-import { ActionConfig } from '../../../src/domain/action-config';
-import type { VersionStrategy } from '../../../src/domain/version-strategy';
-import type { ActionInputs } from '../../../src/inputs';
-
-const execMock = vi.hoisted(() => ({
-  exec: vi.fn(),
-  getExecOutput: vi.fn(),
-}));
-
-const githubMock = vi.hoisted(() => ({
-  context: {
-    repo: { owner: 'jfrz38', repo: 'demo' },
-    payload: {
-      repository: {
-        default_branch: 'main',
-      },
-    },
-  },
-  getOctokit: vi.fn(),
-}));
-
-vi.mock('@actions/exec', () => execMock);
-vi.mock('@actions/github', () => githubMock);
+import { VersionBumpPrUseCase } from '../../../src/application/version-bump-pr-use-case';
+import { ActionConfig } from '../../../src/domain/config/action-config';
+import type { ActionConfigInput } from '../../../src/domain/config/action-config-input';
+import type { CommandExecutor } from '../../../src/domain/ports/command-executor';
+import type { DefaultBranchProvider } from '../../../src/domain/ports/default-branch-provider';
+import type { GitPathResolver } from '../../../src/domain/ports/git-path-resolver';
+import type { GitRepository } from '../../../src/domain/ports/git-repository';
+import type { GitHubRepository } from '../../../src/domain/ports/github-repository';
+import type { VersionStrategy } from '../../../src/domain/versioning/version-strategy';
 
 describe('VersionBumpPrUseCase', () => {
+  let commandExecutor: MockCommandExecutor;
+  let defaultBranchProvider: MockDefaultBranchProvider;
+  let gitPathResolver: TestGitPathResolver;
+  let gitRepository: MockGitRepository;
+  let githubRepository: MockGitHubRepository;
   let tempDir: string;
-  let octokit: {
-    rest: {
-      git: { getRef: ReturnType<typeof vi.fn> };
-      pulls: { create: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn> };
-      repos: { getReleaseByTag: ReturnType<typeof vi.fn> };
-    };
-  };
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'version-bump-action-use-case-'));
     fs.writeFileSync(path.join(tempDir, 'build.gradle.kts'), 'version = "1.2.3"\n');
-    vi.clearAllMocks();
-
-    octokit = {
-      rest: {
-        git: { getRef: vi.fn().mockRejectedValue({ status: 404 }) },
-        pulls: {
-          create: vi.fn().mockResolvedValue({ data: { html_url: 'https://github.com/jfrz38/demo/pull/1' } }),
-          list: vi.fn().mockResolvedValue({ data: [] }),
-        },
-        repos: { getReleaseByTag: vi.fn().mockRejectedValue({ status: 404 }) },
-      },
-    };
-    githubMock.getOctokit.mockReturnValue(octokit);
-    execMock.exec.mockResolvedValue(0);
-    let statusCalls = 0;
-    execMock.getExecOutput.mockImplementation((_command: string, args: string[]) => {
-      if (args[0] === 'status') {
-        statusCalls += 1;
-        if (statusCalls === 1) {
-          return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
-        }
-
-        return Promise.resolve({ stdout: ' M build.gradle.kts\0', stderr: '', exitCode: 0 });
-      }
-
-      return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
-    });
+    commandExecutor = new MockCommandExecutor();
+    defaultBranchProvider = new MockDefaultBranchProvider();
+    gitPathResolver = new TestGitPathResolver();
+    gitRepository = new MockGitRepository();
+    githubRepository = new MockGitHubRepository();
   });
 
   afterEach(() => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('bumps the version, pushes a branch, and creates a draft pull request', async () => {
+  it('bumps the version, creates a branch commit, and creates a draft pull request', async () => {
     const result = await executeUseCase();
 
     expect(result).toMatchObject({
+      branch: 'chore/bump-version-1.2.4',
+      changedFiles: 'build.gradle.kts',
       currentVersion: '1.2.3',
       nextVersion: '1.2.4',
-      tag: 'v1.2.4',
-      branch: 'chore/bump-version-1.2.4',
       prUrl: 'https://github.com/jfrz38/demo/pull/1',
-      changedFiles: 'build.gradle.kts',
+      tag: 'v1.2.4',
     });
     expect(fs.readFileSync(path.join(tempDir, 'build.gradle.kts'), 'utf8')).toBe('version = "1.2.4"\n');
-    expect(execMock.exec).toHaveBeenCalledWith('git', ['fetch', 'origin', 'develop', '--depth=1']);
-    expect(execMock.exec).toHaveBeenCalledWith('git', ['checkout', '-B', 'chore/bump-version-1.2.4', 'origin/develop']);
-    expect(execMock.exec).toHaveBeenCalledWith('git', ['commit', '-m', 'Bump version to 1.2.4']);
-    expect(execMock.exec).toHaveBeenCalledWith('git', ['push', '--set-upstream', 'origin', 'chore/bump-version-1.2.4']);
-    expect(octokit.rest.pulls.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        base: 'develop',
-        draft: true,
-        head: 'chore/bump-version-1.2.4',
-        title: 'Bump version to 1.2.4',
-      }),
-    );
+    expect(gitRepository.checkoutBumpBranch).toHaveBeenCalledWith('develop', 'chore/bump-version-1.2.4');
+    expect(githubRepository.createCommitOnBranch).toHaveBeenCalledWith({
+      baseBranch: 'develop',
+      branch: 'chore/bump-version-1.2.4',
+      changedFiles: ['build.gradle.kts'],
+      commitMessage: 'Bump version to 1.2.4',
+      cwd: tempDir,
+      remoteBranchSha: undefined,
+    });
+    expect(githubRepository.createPullRequest).toHaveBeenCalledWith({
+      baseBranch: 'develop',
+      branch: 'chore/bump-version-1.2.4',
+      draft: true,
+      prBody: 'Bumps version from 1.2.3 to 1.2.4 using a patch release bump.',
+      prTitle: 'Bump version to 1.2.4',
+    });
   });
 
   it('fails before changing files when the remote bump branch already exists without an open pull request', async () => {
-    execMock.getExecOutput.mockImplementation((_command: string, args: string[]) => {
-      if (args[0] === 'ls-remote') {
-        return Promise.resolve({
-          stdout: 'abc1234567890abcdef\trefs/heads/chore/bump-version-1.2.4\n',
-          stderr: '',
-          exitCode: 0,
-        });
-      }
-
-      return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
-    });
+    githubRepository.getBranchRefSha.mockResolvedValue('abc1234567890abcdef');
 
     await expect(executeUseCase()).rejects.toThrow(
       'Branch chore/bump-version-1.2.4 already exists on origin, but no open pull request was found for it. Delete the branch, use a different branch-prefix, or set overwrite-existing-branch to true.',
     );
+
     expect(fs.readFileSync(path.join(tempDir, 'build.gradle.kts'), 'utf8')).toBe('version = "1.2.3"\n');
-    expect(execMock.exec).not.toHaveBeenCalledWith('git', ['checkout', '-B', 'chore/bump-version-1.2.4', 'origin/develop']);
-    expect(execMock.exec).not.toHaveBeenCalledWith('git', ['commit', '-m', expect.any(String)]);
-    expect(execMock.exec).not.toHaveBeenCalledWith('git', expect.arrayContaining(['push']));
+    expect(gitRepository.checkoutBumpBranch).not.toHaveBeenCalled();
+    expect(githubRepository.createCommitOnBranch).not.toHaveBeenCalled();
+    expect(githubRepository.createPullRequest).not.toHaveBeenCalled();
   });
 
-  it('overwrites an existing remote bump branch with a lease when explicitly enabled', async () => {
-    let statusCalls = 0;
-    execMock.getExecOutput.mockImplementation((_command: string, args: string[]) => {
-      if (args[0] === 'status') {
-        statusCalls += 1;
-        if (statusCalls === 1) {
-          return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
-        }
-
-        return Promise.resolve({ stdout: ' M build.gradle.kts\0', stderr: '', exitCode: 0 });
-      }
-      if (args[0] === 'ls-remote') {
-        return Promise.resolve({
-          stdout: 'abc1234567890abcdef\trefs/heads/chore/bump-version-1.2.4\n',
-          stderr: '',
-          exitCode: 0,
-        });
-      }
-
-      return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
-    });
+  it('passes the remote branch sha when overwriting an existing bump branch', async () => {
+    githubRepository.getBranchRefSha.mockResolvedValue('abc1234567890abcdef');
 
     await executeUseCase({ overwriteExistingBranch: 'true' });
 
-    expect(execMock.exec).toHaveBeenCalledWith('git', [
-      'push',
-      '--force-with-lease=refs/heads/chore/bump-version-1.2.4:abc1234567890abcdef',
-      '--set-upstream',
-      'origin',
-      'chore/bump-version-1.2.4',
-    ]);
+    expect(githubRepository.createCommitOnBranch).toHaveBeenCalledWith(expect.objectContaining({ remoteBranchSha: 'abc1234567890abcdef' }));
   });
 
   it('returns an existing open pull request without creating a duplicate', async () => {
-    octokit.rest.pulls.list.mockResolvedValue({ data: [{ html_url: 'https://github.com/jfrz38/demo/pull/99' }] });
+    githubRepository.findOpenPullRequest.mockResolvedValue({ url: 'https://github.com/jfrz38/demo/pull/99' });
 
     const result = await executeUseCase();
 
     expect(result.prUrl).toBe('https://github.com/jfrz38/demo/pull/99');
     expect(result.changedFiles).toBe('');
-    expect(octokit.rest.pulls.create).not.toHaveBeenCalled();
-    expect(execMock.exec).not.toHaveBeenCalledWith('git', ['commit', '-m', expect.any(String)]);
+    expect(gitRepository.checkoutBumpBranch).not.toHaveBeenCalled();
+    expect(githubRepository.createCommitOnBranch).not.toHaveBeenCalled();
+    expect(githubRepository.createPullRequest).not.toHaveBeenCalled();
   });
 
   it('fails when the tag already exists and the safeguard is enabled', async () => {
-    octokit.rest.git.getRef.mockResolvedValue({ data: { ref: 'refs/tags/v1.2.4' } });
+    githubRepository.assertTagDoesNotExist.mockRejectedValue(new Error('Tag v1.2.4 already exists'));
 
     await expect(executeUseCase()).rejects.toThrow('Tag v1.2.4 already exists');
   });
 
   it('fails when the release already exists and the safeguard is enabled', async () => {
-    octokit.rest.repos.getReleaseByTag.mockResolvedValue({ data: { tag_name: 'v1.2.4' } });
+    githubRepository.assertReleaseDoesNotExist.mockRejectedValue(new Error('GitHub Release v1.2.4 already exists'));
 
     await expect(executeUseCase()).rejects.toThrow('GitHub Release v1.2.4 already exists');
   });
 
   it('runs pre-commit commands after bumping the version and commits generated files', async () => {
-    let statusCalls = 0;
-    execMock.getExecOutput.mockImplementation((_command: string, args: string[]) => {
-      if (args[0] === 'status') {
-        statusCalls += 1;
-        if (statusCalls === 1) {
-          return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
-        }
-
-        return Promise.resolve({ stdout: ' M build.gradle.kts\0 M dist/index.js\0', stderr: '', exitCode: 0 });
-      }
-
-      return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
-    });
+    fs.mkdirSync(path.join(tempDir, 'dist'));
+    fs.writeFileSync(path.join(tempDir, 'dist', 'index.js'), 'generated bundle\n');
+    gitRepository.changedFiles = [[], ['build.gradle.kts', 'dist/index.js']];
 
     const result = await executeUseCase({ preCommitCommands: 'make package-github-action' });
 
     expect(result.changedFiles).toBe('build.gradle.kts\ndist/index.js');
-    expect(execMock.exec).toHaveBeenCalledWith('make package-github-action', [], { cwd: tempDir });
-    expect(execMock.exec).toHaveBeenCalledWith('git', ['add', 'build.gradle.kts', 'dist/index.js']);
-    expect(invocationIndex('make package-github-action')).toBeGreaterThan(invocationIndex('git', ['checkout', '-B', 'chore/bump-version-1.2.4', 'origin/develop']));
-    expect(invocationIndex('make package-github-action')).toBeLessThan(invocationIndex('git', ['add', 'build.gradle.kts', 'dist/index.js']));
+    expect(commandExecutor.exec).toHaveBeenCalledWith('make package-github-action', [], { cwd: tempDir });
+    expect(githubRepository.createCommitOnBranch).toHaveBeenCalledWith(expect.objectContaining({ changedFiles: ['build.gradle.kts', 'dist/index.js'] }));
   });
 
   it('runs multiline pre-commit commands in order', async () => {
     await executeUseCase({ preCommitCommands: 'pnpm install\npnpm run build' });
 
-    expect(invocationIndex('pnpm install')).toBeLessThan(invocationIndex('pnpm run build'));
-    expect(invocationIndex('pnpm run build')).toBeLessThan(invocationIndex('git', ['add', 'build.gradle.kts']));
+    expect(commandExecutor.exec.mock.calls).toEqual([
+      ['pnpm install', [], { cwd: tempDir }],
+      ['pnpm run build', [], { cwd: tempDir }],
+    ]);
+    expect(githubRepository.createCommitOnBranch).toHaveBeenCalled();
   });
 
-  async function executeUseCase(inputOverrides: Partial<ActionInputs> = {}) {
+  it('passes all changed files to the commit writer after pre-commit commands', async () => {
+    gitRepository.changedFiles = [[], ['build.gradle.kts', 'generated.txt']];
+
+    await executeUseCase({ preCommitCommands: 'make package-github-action' });
+
+    expect(githubRepository.createCommitOnBranch).toHaveBeenCalledWith(expect.objectContaining({ changedFiles: ['build.gradle.kts', 'generated.txt'] }));
+  });
+
+  async function executeUseCase(inputOverrides: Partial<ActionConfigInput> = {}) {
     const useCase = new VersionBumpPrUseCase({
+      commandExecutor,
+      createGitHubRepository: vi.fn().mockReturnValue(githubRepository),
       createStrategy: (cwd, config) => new TestVersionStrategy(cwd, config.versionFile),
+      defaultBranchProvider,
+      gitPathResolver,
+      gitRepository,
       renderer: new TemplateRenderer(),
     });
 
@@ -219,11 +155,50 @@ describe('VersionBumpPrUseCase', () => {
   }
 });
 
+class MockCommandExecutor implements CommandExecutor {
+  readonly exec = vi.fn<CommandExecutor['exec']>().mockResolvedValue(undefined);
+}
+
+class MockDefaultBranchProvider implements DefaultBranchProvider {
+  getDefaultBranch(): string {
+    return 'main';
+  }
+}
+
+class TestGitPathResolver implements GitPathResolver {
+  toGitPath(cwd: string, filePath: string): string {
+    if (!path.isAbsolute(filePath)) {
+      return filePath.replace(/\\/g, '/');
+    }
+
+    return path.relative(cwd, filePath).replace(/\\/g, '/');
+  }
+}
+
+class MockGitRepository implements GitRepository {
+  changedFiles: string[][] = [[], ['build.gradle.kts']];
+  readonly checkoutBumpBranch = vi.fn<GitRepository['checkoutBumpBranch']>().mockResolvedValue(undefined);
+  readonly getChangedFiles = vi.fn<GitRepository['getChangedFiles']>().mockImplementation(() => Promise.resolve(this.changedFiles.shift() ?? []));
+}
+
+class MockGitHubRepository implements GitHubRepository {
+  readonly assertReleaseDoesNotExist = vi.fn<GitHubRepository['assertReleaseDoesNotExist']>().mockResolvedValue(undefined);
+  readonly assertTagDoesNotExist = vi.fn<GitHubRepository['assertTagDoesNotExist']>().mockResolvedValue(undefined);
+  readonly createCommitOnBranch = vi.fn<GitHubRepository['createCommitOnBranch']>().mockResolvedValue(undefined);
+  readonly createPullRequest = vi.fn<GitHubRepository['createPullRequest']>().mockResolvedValue({ url: 'https://github.com/jfrz38/demo/pull/1' });
+  readonly findOpenPullRequest = vi.fn<GitHubRepository['findOpenPullRequest']>().mockResolvedValue(undefined);
+  readonly getBranchRefSha = vi.fn<GitHubRepository['getBranchRefSha']>().mockResolvedValue(undefined);
+}
+
 class TestVersionStrategy implements VersionStrategy {
   private readonly filePath: string;
 
   constructor(cwd: string, versionFile: string) {
     this.filePath = path.resolve(cwd, versionFile);
+  }
+
+  getPotentialChangedFiles(): string[] {
+    return [this.filePath];
   }
 
   async readCurrentVersion(): Promise<string> {
@@ -243,7 +218,7 @@ class TestVersionStrategy implements VersionStrategy {
   }
 }
 
-function baseInputs(): ActionInputs {
+function baseInputs(): ActionConfigInput {
   return {
     baseBranch: 'develop',
     branchPrefix: 'chore/bump-version-',
@@ -263,14 +238,4 @@ function baseInputs(): ActionInputs {
     versionPattern: '',
     versionReplacement: '',
   };
-}
-
-function invocationIndex(command: string, args?: string[]): number {
-  return execMock.exec.mock.calls.findIndex((call) => {
-    if (call[0] !== command) {
-      return false;
-    }
-
-    return !args || JSON.stringify(call[1]) === JSON.stringify(args);
-  });
 }

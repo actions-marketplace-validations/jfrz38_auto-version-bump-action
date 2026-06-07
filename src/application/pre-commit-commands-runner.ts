@@ -1,15 +1,18 @@
-import * as exec from '@actions/exec';
-import { type PreCommitCommands } from '../domain/pre-commit-commands';
-import { getChangedFiles } from '../git';
+import { type PreCommitCommands } from '../domain/config/pre-commit-commands';
+import type { CommandExecutor } from '../domain/ports/command-executor';
+import type { GitRepository } from '../domain/ports/git-repository';
 
 export class PreCommitCommandsRunner {
-  constructor(private readonly cwd: string) {}
+  constructor(
+    private readonly commandExecutor: CommandExecutor,
+    private readonly gitRepository: GitRepository,
+  ) { }
 
-  async run(commands: PreCommitCommands, baselineChangedFiles: string[]): Promise<string[]> {
+  async run(cwd: string, commands: PreCommitCommands, baselineChangedFiles: string[]): Promise<string[]> {
     for (const command of commands.values) {
-      await exec.exec(command, [], { cwd: this.cwd });
+      await this.commandExecutor.exec(command, [], { cwd });
     }
 
-    return (await getChangedFiles()).filter((filePath) => !baselineChangedFiles.includes(filePath));
+    return (await this.gitRepository.getChangedFiles()).filter((filePath) => !baselineChangedFiles.includes(filePath));
   }
 }

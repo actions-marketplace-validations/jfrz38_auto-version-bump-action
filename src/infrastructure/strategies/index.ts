@@ -1,5 +1,5 @@
-import type { ActionConfig } from '../../domain/action-config';
-import type { VersionStrategy } from '../../domain/version-strategy';
+import type { ActionConfig } from '../../domain/config/action-config';
+import type { VersionStrategy } from '../../domain/versioning/version-strategy';
 import { GradleKtsStrategy } from './gradle-kts';
 import { NpmStrategy } from './npm';
 import { RegexStrategy } from './regex';

@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { VersionStrategy } from '../../domain/version-strategy';
+import type { VersionStrategy } from '../../domain/versioning/version-strategy';
 
 const VERSION_ASSIGNMENT_PATTERN = /(^\s*version\s*=\s*")(\d+\.\d+\.\d+)(".*$)/gm;
 
@@ -9,6 +9,10 @@ export class GradleKtsStrategy implements VersionStrategy {
 
   constructor(cwd: string, versionFile: string) {
     this.filePath = path.resolve(cwd, versionFile);
+  }
+
+  getPotentialChangedFiles(): string[] {
+    return [this.filePath];
   }
 
   async readCurrentVersion(): Promise<string> {

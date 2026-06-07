@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ActionConfig } from '../../../src/domain/action-config';
-import type { ActionInputs } from '../../../src/inputs';
+import { ActionConfig } from '../../../src/domain/config/action-config';
+import type { ActionConfigInput } from '../../../src/domain/config/action-config-input';
 
 describe('ActionConfig', () => {
   it('builds a validated action config from raw inputs', () => {
@@ -32,7 +32,7 @@ describe('ActionConfig', () => {
   });
 });
 
-function baseInputs(): ActionInputs {
+function baseInputs(): ActionConfigInput {
   return {
     baseBranch: 'develop',
     branchPrefix: '',

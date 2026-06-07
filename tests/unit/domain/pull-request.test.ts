@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { Branch } from '../../../src/domain/branch';
-import { PullRequest } from '../../../src/domain/pull-request';
-import { SimpleVersion } from '../../../src/domain/simple-version';
-import { Tag } from '../../../src/domain/tag';
+import { Branch } from '../../../src/domain/release-proposal/branch';
+import { PullRequest } from '../../../src/domain/release-proposal/pull-request';
+import { Tag } from '../../../src/domain/release-proposal/tag';
+import { SimpleVersion } from '../../../src/domain/versioning/simple-version';
 
 describe('PullRequest', () => {
   it('builds pull requests from rendered content', () => {

@@ -1,18 +1,26 @@
 import * as exec from '@actions/exec';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { VersionStrategy } from '../../domain/version-strategy';
+import type { VersionStrategy } from '../../domain/versioning/version-strategy';
 
 interface PackageJson {
   version?: unknown;
   [key: string]: unknown;
 }
 
+const PACKAGE = 'package.json';
+const PACKAGE_LOCK = 'package-lock.json';
+
 export class NpmStrategy implements VersionStrategy {
   private readonly filePath: string;
 
   constructor(private readonly cwd: string, versionFile: string) {
     this.filePath = path.resolve(cwd, versionFile);
+  }
+
+  getPotentialChangedFiles(): string[] {
+    const packageDir = path.dirname(this.filePath);
+    return [this.filePath, path.join(packageDir, PACKAGE_LOCK)];
   }
 
   async readCurrentVersion(): Promise<string> {
@@ -25,12 +33,12 @@ export class NpmStrategy implements VersionStrategy {
   }
 
   async writeNextVersion(nextVersion: string): Promise<string[]> {
-    if (path.basename(this.filePath) !== 'package.json') {
+    if (path.basename(this.filePath) !== PACKAGE) {
       throw new Error('strategy=npm requires version-file to point to package.json.');
     }
 
     const packageDir = path.dirname(this.filePath);
-    const packageLockPath = path.join(packageDir, 'package-lock.json');
+    const packageLockPath = path.join(packageDir, PACKAGE_LOCK);
     const hasPackageLock = await fileExists(packageLockPath);
 
     if (hasPackageLock) {

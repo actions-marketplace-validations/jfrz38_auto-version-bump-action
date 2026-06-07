@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { VersionStrategy } from '../../domain/version-strategy';
+import type { VersionStrategy } from '../../domain/versioning/version-strategy';
 
 export class RegexStrategy implements VersionStrategy {
   private readonly filePath: string;
@@ -11,6 +11,10 @@ export class RegexStrategy implements VersionStrategy {
     this.filePath = path.resolve(cwd, versionFile);
     this.pattern = new RegExp(versionPattern, 'm');
     this.replacement = versionReplacement;
+  }
+
+  getPotentialChangedFiles(): string[] {
+    return [this.filePath];
   }
 
   async readCurrentVersion(): Promise<string> {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Branch } from '../../../src/domain/branch';
-import { SimpleVersion } from '../../../src/domain/simple-version';
+import { Branch } from '../../../src/domain/release-proposal/branch';
+import { SimpleVersion } from '../../../src/domain/versioning/simple-version';
 
 describe('Branch', () => {
   it('builds branch names from existing branch names', () => {

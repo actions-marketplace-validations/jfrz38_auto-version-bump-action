@@ -44,7 +44,21 @@ describe('main action entrypoint', () => {
 
     githubMock.getOctokit.mockReturnValue({
       rest: {
-        git: { getRef: vi.fn().mockRejectedValue({ status: 404 }) },
+        git: {
+          createBlob: vi.fn().mockResolvedValue({ data: { sha: 'blob-sha' } }),
+          createCommit: vi.fn().mockResolvedValue({ data: { sha: 'commit-sha' } }),
+          createRef: vi.fn().mockResolvedValue({ data: { ref: 'refs/heads/chore/bump-version-1.2.4' } }),
+          createTree: vi.fn().mockResolvedValue({ data: { sha: 'tree-sha' } }),
+          getCommit: vi.fn().mockResolvedValue({ data: { tree: { sha: 'base-tree-sha' } } }),
+          getRef: vi.fn().mockImplementation(({ ref }: { ref: string }) => {
+            if (ref === 'heads/develop') {
+              return Promise.resolve({ data: { object: { sha: 'base-commit-sha' } } });
+            }
+
+            return Promise.reject({ status: 404 });
+          }),
+          updateRef: vi.fn().mockResolvedValue({ data: { ref: 'refs/heads/chore/bump-version-1.2.4' } }),
+        },
         pulls: {
           create: vi.fn().mockResolvedValue({ data: { html_url: 'https://github.com/jfrz38/demo/pull/1' } }),
           list: vi.fn().mockResolvedValue({ data: [] }),
