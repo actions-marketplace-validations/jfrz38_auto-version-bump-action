@@ -21,6 +21,9 @@ importers:
       '@eslint/js':
         specifier: 10.0.1
         version: 10.0.1(eslint@10.4.0)
+      '@jfrz38/eslint-plugin-clean-architecture-highlighter':
+        specifier: 0.1.1
+        version: 0.1.1(eslint@10.4.0)
       '@types/node':
         specifier: 25.9.1
         version: 25.9.1
@@ -307,6 +310,11 @@ packages:
   '@humanwhocodes/retry@0.4.3':
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
+
+  '@jfrz38/eslint-plugin-clean-architecture-highlighter@0.1.1':
+    resolution: {integrity: sha512-Qnn40q209bAuAdMzpYJK7MrgUPXJ3aHQrMEwAnbqyxJOxHPdV5GbSjbalijzc2qAux0QRBerOXgPg0bUpBcKCQ==}
+    peerDependencies:
+      eslint: '>=9'
 
   '@jridgewell/resolve-uri@3.1.2':
     resolution: {integrity: sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==}
@@ -1349,6 +1357,10 @@ snapshots:
   '@humanwhocodes/module-importer@1.0.1': {}
 
   '@humanwhocodes/retry@0.4.3': {}
+
+  '@jfrz38/eslint-plugin-clean-architecture-highlighter@0.1.1(eslint@10.4.0)':
+    dependencies:
+      eslint: 10.4.0
 
   '@jridgewell/resolve-uri@3.1.2': {}
 
