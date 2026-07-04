@@ -31,11 +31,11 @@ package: ## build the distributable action package
 	$(PNPM) run package
 
 .PHONY: validate
-validate: ## run typecheck, tests, and build
+validate: ## run lint, typecheck, tests, and build
 	$(PNPM) run validate
 
 .PHONY: check
-check: lint validate ## run all local checks used before release
+check: validate ## run all local checks used before release
 
 .PHONY: dist-check
 dist-check: build ## verify dist/index.js is up to date after build
