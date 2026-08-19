@@ -13,6 +13,15 @@ updates:
       dependencies:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # TS 7.0 has no API for typescript-eslint. Remove when support lands:
+      # https://github.com/typescript-eslint/typescript-eslint/issues/10940
+      - dependency-name: "typescript"
+        versions:
+          - ">=7.0.0 <8.0.0"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -25,3 +34,6 @@ updates:
       dependencies:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
