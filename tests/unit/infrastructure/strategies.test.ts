@@ -30,6 +30,7 @@ describe('version strategies', () => {
 
     const strategy = new GradleKtsStrategy(tempDir, 'build.gradle.kts');
 
+    expect(strategy.getPotentialChangedFiles()).toEqual([filePath]);
     expect(await strategy.readCurrentVersion()).toBe('0.1.2');
     expect(await strategy.writeNextVersion('0.1.3')).toEqual([filePath]);
     expect(fs.readFileSync(filePath, 'utf8')).toContain('version = "0.1.3"');
@@ -47,6 +48,7 @@ describe('version strategies', () => {
 
     const strategy = new NpmStrategy(tempDir, 'package.json');
 
+    expect(strategy.getPotentialChangedFiles()).toEqual([filePath, path.join(tempDir, 'package-lock.json')]);
     expect(await strategy.readCurrentVersion()).toBe('1.2.3');
     expect(await strategy.writeNextVersion('1.2.4')).toEqual([filePath]);
     expect(JSON.parse(fs.readFileSync(filePath, 'utf8'))).toMatchObject({ version: '1.2.4' });
@@ -72,6 +74,7 @@ describe('version strategies', () => {
 
     const strategy = new RegexStrategy(tempDir, 'VERSION.txt', 'releaseVersion=(\\d+\\.\\d+\\.\\d+)', 'releaseVersion={version}');
 
+    expect(strategy.getPotentialChangedFiles()).toEqual([filePath]);
     expect(await strategy.readCurrentVersion()).toBe('1.2.3');
     expect(await strategy.writeNextVersion('1.2.4')).toEqual([filePath]);
     expect(fs.readFileSync(filePath, 'utf8')).toBe('releaseVersion=1.2.4\n');

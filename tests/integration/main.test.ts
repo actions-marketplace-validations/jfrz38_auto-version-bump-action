@@ -44,7 +44,21 @@ describe('main action entrypoint', () => {
 
     githubMock.getOctokit.mockReturnValue({
       rest: {
-        git: { getRef: vi.fn().mockRejectedValue({ status: 404 }) },
+        git: {
+          createBlob: vi.fn().mockResolvedValue({ data: { sha: 'blob-sha' } }),
+          createCommit: vi.fn().mockResolvedValue({ data: { sha: 'commit-sha' } }),
+          createRef: vi.fn().mockResolvedValue({ data: { ref: 'refs/heads/chore/bump-version-1.2.4' } }),
+          createTree: vi.fn().mockResolvedValue({ data: { sha: 'tree-sha' } }),
+          getCommit: vi.fn().mockResolvedValue({ data: { tree: { sha: 'base-tree-sha' } } }),
+          getRef: vi.fn().mockImplementation(({ ref }: { ref: string }) => {
+            if (ref === 'heads/develop') {
+              return Promise.resolve({ data: { object: { sha: 'base-commit-sha' } } });
+            }
+
+            return Promise.reject({ status: 404 });
+          }),
+          updateRef: vi.fn().mockResolvedValue({ data: { ref: 'refs/heads/chore/bump-version-1.2.4' } }),
+        },
         pulls: {
           create: vi.fn().mockResolvedValue({ data: { html_url: 'https://github.com/jfrz38/demo/pull/1' } }),
           list: vi.fn().mockResolvedValue({ data: [] }),
@@ -53,9 +67,15 @@ describe('main action entrypoint', () => {
       },
     });
     execMock.exec.mockResolvedValue(0);
+    let statusCalls = 0;
     execMock.getExecOutput.mockImplementation((_command: string, args: string[]) => {
       if (args[0] === 'status') {
-        return Promise.resolve({ stdout: ' M build.gradle.kts\n', stderr: '', exitCode: 0 });
+        statusCalls += 1;
+        if (statusCalls === 1) {
+          return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
+        }
+
+        return Promise.resolve({ stdout: ' M build.gradle.kts\0', stderr: '', exitCode: 0 });
       }
 
       return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
@@ -74,6 +94,7 @@ describe('main action entrypoint', () => {
         draft: 'true',
         'github-token': 'token',
         'commit-message': 'Bump version to {version}',
+        'pre-commit-commands': '',
         'pr-title': 'Bump version to {version}',
         'pr-body': 'Bumps version from {current-version} to {next-version} using a {bump} release bump.',
         'fail-if-tag-exists': 'true',

@@ -1,23 +1,7 @@
 import * as core from '@actions/core';
+import type { ActionConfigInput } from './domain/config/action-config-input';
 
-export interface ActionInputs {
-  baseBranch: string;
-  branchPrefix: string;
-  bump: string;
-  commitMessage: string;
-  draft: string;
-  failIfReleaseExists: string;
-  failIfTagExists: string;
-  githubToken: string;
-  overwriteExistingBranch: string;
-  prBody: string;
-  prTitle: string;
-  strategy: string;
-  tagPrefix: string;
-  versionFile: string;
-  versionPattern: string;
-  versionReplacement: string;
-}
+export type ActionInputs = ActionConfigInput;
 
 export function readInputs(): ActionInputs {
   return {
@@ -30,6 +14,7 @@ export function readInputs(): ActionInputs {
     failIfTagExists: core.getInput('fail-if-tag-exists'),
     githubToken: core.getInput('github-token'),
     overwriteExistingBranch: core.getInput('overwrite-existing-branch'),
+    preCommitCommands: core.getInput('pre-commit-commands'),
     prBody: core.getInput('pr-body'),
     prTitle: core.getInput('pr-title'),
     strategy: core.getInput('strategy', { required: true }),

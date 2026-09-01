@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { BooleanInput } from '../../../src/domain/boolean-input';
-import { StrategyName } from '../../../src/domain/strategy-name';
+import { BooleanInput } from '../../../src/domain/config/boolean-input';
+import { StrategyName } from '../../../src/domain/config/strategy-name';
 
 describe('domain value objects', () => {
   it('parses boolean inputs with defaults', () => {

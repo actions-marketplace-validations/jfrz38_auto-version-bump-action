@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ActionConfig } from '../../../src/domain/action-config';
-import type { ActionInputs } from '../../../src/inputs';
+import { ActionConfig } from '../../../src/domain/config/action-config';
+import type { ActionConfigInput } from '../../../src/domain/config/action-config-input';
 
 describe('ActionConfig', () => {
   it('builds a validated action config from raw inputs', () => {
@@ -15,6 +15,13 @@ describe('ActionConfig', () => {
     expect(config.bump.value).toBe('patch');
     expect(config.draft).toBe(true);
     expect(config.overwriteExistingBranch).toBe(false);
+    expect(config.preCommitCommands.values).toEqual([]);
+  });
+
+  it('builds pre-commit commands from raw input', () => {
+    const config = new ActionConfig({ ...baseInputs(), preCommitCommands: 'pnpm install\n\n pnpm run build ' });
+
+    expect(config.preCommitCommands.values).toEqual(['pnpm install', 'pnpm run build']);
   });
 
   it('requires regex pattern and replacement for regex strategy', () => {
@@ -25,7 +32,7 @@ describe('ActionConfig', () => {
   });
 });
 
-function baseInputs(): ActionInputs {
+function baseInputs(): ActionConfigInput {
   return {
     baseBranch: 'develop',
     branchPrefix: '',
@@ -36,6 +43,7 @@ function baseInputs(): ActionInputs {
     failIfTagExists: '',
     githubToken: 'token',
     overwriteExistingBranch: '',
+    preCommitCommands: '',
     prBody: '',
     prTitle: '',
     strategy: 'gradle-kts',
